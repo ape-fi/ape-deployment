@@ -5,13 +5,12 @@ import "./Denominations.sol";
 import "./PriceOracle.sol";
 import "./interfaces/BandReference.sol";
 import "./interfaces/FeedRegistryInterface.sol";
-import "./interfaces/V1PriceOracleInterface.sol";
 import "../CErc20.sol";
 import "../CToken.sol";
 import "../Exponential.sol";
 import "../EIP20Interface.sol";
 
-contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
+contract PriceOracleProxyUSD is PriceOracle, Exponential, Denominations {
     /// @notice Admin address
     address public admin;
 
@@ -27,47 +26,22 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
         bool isUsed;
     }
 
-    struct ReferenceInfo {
-        /// @notice The symbol used in reference
-        string symbol;
-        /// @notice It's being used or not.
-        bool isUsed;
-    }
-
     /// @notice Chainlink Aggregators
     mapping(address => AggregatorInfo) public aggregators;
-
-    /// @notice Band Reference
-    mapping(address => ReferenceInfo) public references;
-
-    /// @notice The v1 price oracle, maintain by CREAM
-    V1PriceOracleInterface public v1PriceOracle;
 
     /// @notice The ChainLink registry address
     FeedRegistryInterface public reg;
 
-    /// @notice The BAND reference address
-    StdReferenceInterface public ref;
-
-    /// @notice Quote symbol we used for BAND reference contract
-    string public constant QUOTE_SYMBOL = "USD";
-
     /**
      * @param admin_ The address of admin to set aggregators
-     * @param v1PriceOracle_ The v1 price oracle
      * @param registry_ The address of ChainLink registry
-     * @param reference_ The address of Band reference
      */
     constructor(
         address admin_,
-        address v1PriceOracle_,
-        address registry_,
-        address reference_
+        address registry_
     ) public {
         admin = admin_;
-        v1PriceOracle = V1PriceOracleInterface(v1PriceOracle_);
         reg = FeedRegistryInterface(registry_);
-        ref = StdReferenceInterface(reference_);
     }
 
     /**
@@ -90,15 +64,7 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
             return getNormalizedPrice(price, underlying);
         }
 
-        // Get price from Band.
-        ReferenceInfo storage referenceInfo = references[underlying];
-        if (referenceInfo.isUsed) {
-            uint256 price = getPriceFromBAND(referenceInfo.symbol);
-            return getNormalizedPrice(price, underlying);
-        }
-
-        // Get price from v1.
-        return getPriceFromV1(underlying);
+        return 0;
     }
 
     /*** Internal fucntions ***/
@@ -118,19 +84,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     }
 
     /**
-     * @notice Get price from BAND protocol.
-     * @param symbol The symbol that used to get price of
-     * @return The price, scaled by 1e18
-     */
-    function getPriceFromBAND(string memory symbol) internal view returns (uint256) {
-        StdReferenceInterface.ReferenceData memory data = ref.getReferenceData(symbol, QUOTE_SYMBOL);
-        require(data.rate > 0, "invalid price");
-
-        // Price from BAND is always 1e18 base.
-        return data.rate;
-    }
-
-    /**
      * @notice Normalize the price according to the token decimals.
      * @param price The original price
      * @param tokenAddress The token address
@@ -139,15 +92,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
     function getNormalizedPrice(uint256 price, address tokenAddress) internal view returns (uint256) {
         uint256 underlyingDecimals = EIP20Interface(tokenAddress).decimals();
         return mul_(price, 10**(18 - underlyingDecimals));
-    }
-
-    /**
-     * @notice Get price from v1 price oracle
-     * @param token The token to get the price of
-     * @return The price
-     */
-    function getPriceFromV1(address token) internal view returns (uint256) {
-        return v1PriceOracle.assetPrices(token);
     }
 
     /*** Admin or guardian functions ***/
@@ -203,29 +147,6 @@ contract PriceOracleProxyIB is PriceOracle, Exponential, Denominations {
             }
             aggregators[tokenAddresses[i]] = AggregatorInfo({base: bases[i], quote: quotes[i], isUsed: isUsed});
             emit AggregatorUpdated(tokenAddresses[i], bases[i], quotes[i], isUsed);
-        }
-    }
-
-    /**
-     * @notice Set Band references for multiple tokens
-     * @param tokenAddresses The list of underlying tokens
-     * @param symbols The list of symbols used by Band reference
-     */
-    function _setReferences(address[] calldata tokenAddresses, string[] calldata symbols) external {
-        require(msg.sender == admin || msg.sender == guardian, "only the admin or guardian may set the references");
-        require(tokenAddresses.length == symbols.length, "mismatched data");
-        for (uint256 i = 0; i < tokenAddresses.length; i++) {
-            bool isUsed;
-            if (bytes(symbols[i]).length != 0) {
-                require(msg.sender == admin, "guardian may only clear the reference");
-                isUsed = true;
-
-                // Make sure we could get the price.
-                getPriceFromBAND(symbols[i]);
-            }
-
-            references[tokenAddresses[i]] = ReferenceInfo({symbol: symbols[i], isUsed: isUsed});
-            emit ReferenceUpdated(tokenAddresses[i], symbols[i], isUsed);
         }
     }
 }
