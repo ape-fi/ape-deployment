@@ -3,18 +3,14 @@ import {DeployFunction} from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
-  const {deploy, get} = deployments;
+  const {deploy} = deployments;
 
   const {deployer} = await getNamedAccounts();
 
-  const unitrollerAddress = (await get('Unitroller')).address
-
-  await deploy('FlashloanLender', {
+  await deploy('CCollateralCapErc20Delegate', {
     from: deployer,
-    args: [unitrollerAddress, deployer],
-    log: true,
+    log: true
   });
 };
 export default func;
-func.tags = ['FlashloanLender'];
-func.dependencies = ['Unitroller', 'Comptroller'];
+func.tags = ['CTokenImplementation'];
