@@ -753,13 +753,15 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
      * @param liquidator The account receiving seized collateral
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
+     * @param feeTokens The number of cTokens as fee
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function seizeInternal(
         address seizerToken,
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 seizeTokens,
+        uint256 feeTokens
     ) internal returns (uint256) {
         // Make sure accountCollateralTokens of `liquidator` and `borrower` are initialized.
         initializeAccountCollateralTokens(liquidator);
@@ -782,20 +784,28 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         /* Fail if borrower = liquidator */
         require(borrower != liquidator, "invalid account pair");
 
+        /* We take half of the liquidation incentive as fee */
+        uint256 bonusTokens = sub_(seizeTokens, feeTokens);
+
         /*
          * We calculate the new borrower and liquidator token balances and token collateral balances, failing on underflow/overflow:
          *  accountTokens[borrower] = accountTokens[borrower] - seizeTokens
-         *  accountTokens[liquidator] = accountTokens[liquidator] + seizeTokens
+         *  accountTokens[liquidator] = accountTokens[liquidator] + bonusTokens
+         *  accountTokens[admin] = accountTokens[admin] + feeTokens
          *  accountCollateralTokens[borrower] = accountCollateralTokens[borrower] - seizeTokens
-         *  accountCollateralTokens[liquidator] = accountCollateralTokens[liquidator] + seizeTokens
+         *  accountCollateralTokens[liquidator] = accountCollateralTokens[liquidator] + bonusTokens
+         *  accountCollateralTokens[admin] = accountCollateralTokens[admin] + feeTokens
          */
         accountTokens[borrower] = sub_(accountTokens[borrower], seizeTokens);
-        accountTokens[liquidator] = add_(accountTokens[liquidator], seizeTokens);
+        accountTokens[liquidator] = add_(accountTokens[liquidator], bonusTokens);
+        accountTokens[admin] = add_(accountTokens[admin], feeTokens);
         accountCollateralTokens[borrower] = sub_(accountCollateralTokens[borrower], seizeTokens);
-        accountCollateralTokens[liquidator] = add_(accountCollateralTokens[liquidator], seizeTokens);
+        accountCollateralTokens[liquidator] = add_(accountCollateralTokens[liquidator], bonusTokens);
+        accountCollateralTokens[admin] = add_(accountCollateralTokens[admin], feeTokens);
 
         /* Emit a Transfer, UserCollateralChanged events */
-        emit Transfer(borrower, liquidator, seizeTokens);
+        emit Transfer(borrower, liquidator, bonusTokens);
+        emit Transfer(borrower, admin, feeTokens);
         emit UserCollateralChanged(borrower, accountCollateralTokens[borrower]);
         emit UserCollateralChanged(liquidator, accountCollateralTokens[liquidator]);
 

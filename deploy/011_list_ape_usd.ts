@@ -11,11 +11,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const unitrollerAddress = (await get('Unitroller')).address;
   const irmAddress = (await get('StableIRM')).address;
   const cTokenAdminAddress = (await get('CTokenAdmin')).address;
-  const cTokenImplementationAddress = (await get('CCollateralCapErc20Delegate')).address;
+  // FIXME: CCollateralCapErc20Delegate
+  const cTokenImplementationAddress = (await get('CErc20Delegate')).address;
   const exchangeRate = '0.01';
 
 
-  const apeUSDAddress = (await get('apeUSD')).address;
+  const apeUSDAddress = (await get('ApeUSD')).address;
 
   const initialExchangeRate = parseUnits(exchangeRate, 18 + 18 - 8);
 
@@ -37,38 +38,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true
   });
 
-  // set price oracle
-  if (hre.network.name == 'mainnet') {
-    // TODO: modify PriceOracle contract
-    // await execute(
-    //   'PriceOracleProxyUSD',
-    //   { from: deployer },
-    //   '_setAggregators',
-    //   [apeCoinAddress],
-    //   [apeCoinAddress],
-    //   ['0x0000000000000000000000000000000000000348'], // USD
-    // );
-  } else {
-    await execute(
-      'PriceOracleProxyUSD',
-      { from: deployer },
-      'setDirectPrice',
-      apeUSDAddress,
-      parseUnits('1', 18)
-    );
-  }
-
   // set apApeUSD address in apeUSD
-  await execute('apeUSD', { from: deployer}, 'setIB', apApeUSD.address);
+  await execute('ApeUSD', { from: deployer}, 'setIB', apApeUSD.address);
 
   // support market
-  await execute('Comptroller', { from: deployer }, '_supportMarket', apApeUSD.address, 1);
+  // FIXME: market version 1
+  await execute('Comptroller', { from: deployer }, '_supportMarket', apApeUSD.address, 0);
 
   // supply apeUSD into Ape Finance
-  await execute('apeUSD', { from: deployer }, 'deposit');
+  await execute('ApeUSD', { from: deployer }, 'deposit');
 
   // pause supply
   await execute('Comptroller', { from: deployer }, '_setMintPaused', apApeUSD.address, true);
+
+  // set borrow fee
+  await execute('CTokenAdmin', { from: deployer }, '_setBorrowFee', apApeUSD.address, parseUnits('0.005', 18)); // 0.5%
 };
 export default func;
 func.tags = ['ListAPE'];

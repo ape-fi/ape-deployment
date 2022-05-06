@@ -430,7 +430,6 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
     }
 
     struct BorrowLocalVars {
-        MathError mathErr;
         uint256 accountBorrows;
         uint256 accountBorrowsNew;
         uint256 totalBorrowsNew;
@@ -482,7 +481,15 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
          *  On success, the cToken borrowAmount less of cash.
          *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
          */
-        doTransferOut(borrower, borrowAmount, isNative);
+        if (borrowFee > 0) {
+            uint256 borrowAmountAfterFee = mul_(
+                borrowAmount,
+                sub_(Exp({mantissa: mantissaOne}), Exp({mantissa: borrowFee}))
+            );
+            doTransferOut(borrower, borrowAmountAfterFee, isNative);
+        } else {
+            doTransferOut(borrower, borrowAmount, isNative);
+        }
 
         /* We emit a Borrow event */
         emit Borrow(borrower, borrowAmount, vars.accountBorrowsNew, vars.totalBorrowsNew);
@@ -523,8 +530,6 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
     }
 
     struct RepayBorrowLocalVars {
-        Error err;
-        MathError mathErr;
         uint256 repayAmount;
         uint256 borrowerIndex;
         uint256 accountBorrows;
@@ -630,6 +635,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         uint256 actualRepayAmount;
         uint256 amountSeizeError;
         uint256 seizeTokens;
+        uint256 feeTokens;
     }
 
     /**
@@ -684,12 +690,11 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         // (No safe failures beyond this point)
 
         /* We calculate the number of collateral tokens that will be seized */
-        (vars.amountSeizeError, vars.seizeTokens) = comptroller.liquidateCalculateSeizeTokens(
+        (vars.seizeTokens, vars.feeTokens) = comptroller.liquidateCalculateSeizeTokens(
             address(this),
             address(cTokenCollateral),
             vars.actualRepayAmount
         );
-        require(vars.amountSeizeError == uint256(Error.NO_ERROR), "calculate seize amount failed");
 
         /* Revert if borrower collateral token balance < seizeTokens */
         require(cTokenCollateral.balanceOf(borrower) >= vars.seizeTokens, "seize too much");
@@ -697,9 +702,9 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         // If this is also the collateral, run seizeInternal to avoid re-entrancy, otherwise make an external call
         uint256 seizeError;
         if (address(cTokenCollateral) == address(this)) {
-            seizeError = seizeInternal(address(this), liquidator, borrower, vars.seizeTokens);
+            seizeError = seizeInternal(address(this), liquidator, borrower, vars.seizeTokens, vars.feeTokens);
         } else {
-            seizeError = cTokenCollateral.seize(liquidator, borrower, vars.seizeTokens);
+            seizeError = cTokenCollateral.seize(liquidator, borrower, vars.seizeTokens, vars.feeTokens);
         }
 
         /* Revert if seize tokens fails (since we cannot be sure of side effects) */
@@ -728,14 +733,16 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @param liquidator The account receiving seized collateral
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
+     * @param feeTokens The number of cTokens as fee
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function seize(
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 seizeTokens,
+        uint256 feeTokens
     ) external nonReentrant returns (uint256) {
-        return seizeInternal(msg.sender, liquidator, borrower, seizeTokens);
+        return seizeInternal(msg.sender, liquidator, borrower, seizeTokens, feeTokens);
     }
 
     /*** Admin Functions ***/
@@ -1017,6 +1024,20 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         return uint256(Error.NO_ERROR);
     }
 
+    /**
+     * @notice updates the borrow fee
+     * @param newBorrowFee the new borrow fee
+     */
+    function _setBorrowFee(uint256 newBorrowFee) public {
+        require(msg.sender == admin, "admin only");
+        require(newBorrowFee < 0.1e18, "invalid borrow fee"); // 10% borrow fee max
+
+        uint256 oldBorrowFee = borrowFee;
+        borrowFee = newBorrowFee;
+
+        emit BorrowFee(oldBorrowFee, newBorrowFee);
+    }
+
     /*** Safe Token ***/
 
     /**
@@ -1093,7 +1114,8 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         address seizerToken,
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 seizeTokens,
+        uint256 feeTokens
     ) internal returns (uint256);
 
     /*** Reentrancy Guard ***/

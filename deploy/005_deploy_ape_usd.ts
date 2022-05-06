@@ -8,13 +8,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { admin, deployer } = await getNamedAccounts();
 
-  await deploy('apeUSD', {
+  await deploy('ApeUSD', {
     from: deployer,
     contract: 'FixedForex',
     log: true
   });
 
-  await execute('apeUSD', { from: deployer }, 'mint', parseUnits('1000000', 18));
+  await execute('ApeUSD', { from: deployer }, 'mint', parseUnits('1000000', 18));
+  await execute('ApeUSD', { from: deployer }, 'setGov', admin);
 };
 export default func;
-func.tags = ['apeUSD'];
+func.tags = ['ApeUSD'];

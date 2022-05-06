@@ -11,12 +11,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const unitrollerAddress = (await get('Unitroller')).address;
   const irmAddress = (await get('StableIRM')).address;
   const cTokenAdminAddress = (await get('CTokenAdmin')).address;
-  const cTokenImplementationAddress = (await get('CCollateralCapErc20Delegate')).address;
+  // FIXME: CCollateralCapErc20Delegate
+  const cTokenImplementationAddress = (await get('CErc20Delegate')).address;
   const exchangeRate = '0.01';
 
 
   var apeCoinAddress;
-  if (hre.network.name == 'mainnet') {
+  const network = hre.network as any;
+  if (network.config.forking || network.name == 'mainnet') {
     const { apeCoin } = await getNamedAccounts();
     apeCoinAddress = apeCoin;
   } else {
@@ -48,7 +50,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 
   // set price oracle
-  if (hre.network.name == 'mainnet') {
+  if (network.config.forking || network.name == 'mainnet') {
     await execute(
       'PriceOracleProxyUSD',
       { from: deployer },
@@ -68,7 +70,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   // support market
-  await execute('Comptroller', { from: deployer }, '_supportMarket', apAPE.address, 1);
+  // FIXME: market version 1
+  await execute('Comptroller', { from: deployer }, '_supportMarket', apAPE.address, 0);
   await execute('Comptroller', { from: deployer }, '_setCollateralFactor', apAPE.address, parseUnits('0.7'));
   await execute('Comptroller', { from: deployer }, '_setBorrowPaused', apAPE.address, true);
 };

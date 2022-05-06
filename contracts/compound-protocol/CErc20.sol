@@ -456,13 +456,15 @@ contract CErc20 is CToken, CErc20Interface {
      * @param liquidator The account receiving seized collateral
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
+     * @param feeTokens The number of cTokens as fee
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function seizeInternal(
         address seizerToken,
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 seizeTokens,
+        uint256 feeTokens
     ) internal returns (uint256) {
         /* Fail if seize not allowed */
         require(
@@ -481,16 +483,22 @@ contract CErc20 is CToken, CErc20Interface {
         /* Fail if borrower = liquidator */
         require(borrower != liquidator, "invalid account pair");
 
+        /* We take half of the liquidation incentive as fee */
+        uint256 bonusTokens = sub_(seizeTokens, feeTokens);
+
         /*
          * We calculate the new borrower and liquidator token balances, failing on underflow/overflow:
          *  borrowerTokensNew = accountTokens[borrower] - seizeTokens
-         *  liquidatorTokensNew = accountTokens[liquidator] + seizeTokens
+         *  liquidatorTokensNew = accountTokens[liquidator] + bonusTokens
+         *  adminTokensNew = accountTokens[admin] + feeTokens
          */
         accountTokens[borrower] = sub_(accountTokens[borrower], seizeTokens);
-        accountTokens[liquidator] = add_(accountTokens[liquidator], seizeTokens);
+        accountTokens[liquidator] = add_(accountTokens[liquidator], bonusTokens);
+        accountTokens[admin] = add_(accountTokens[admin], feeTokens);
 
         /* Emit a Transfer event */
-        emit Transfer(borrower, liquidator, seizeTokens);
+        emit Transfer(borrower, liquidator, bonusTokens);
+        emit Transfer(borrower, admin, feeTokens);
 
         /* We call the defense hook */
         comptroller.seizeVerify(address(this), seizerToken, liquidator, borrower, seizeTokens);

@@ -169,6 +169,15 @@ contract CTokenAdmin is Exponential {
     }
 
     /**
+     * @notice Set cToken borrow fee
+     * @param cToken The cToken address
+     * @param newBorrowFee The new borrow fee
+     */
+    function _setBorrowFee(address cToken, uint256 newBorrowFee) external onlyAdmin {
+        CTokenInterface(cToken)._setBorrowFee(newBorrowFee);
+    }
+
+    /**
      * @notice Set cToken collateral cap
      * @dev It will revert if the cToken is not CCollateralCap.
      * @param cToken The cToken address

@@ -17,6 +17,9 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential, Denominations {
     /// @notice Guardian address
     address public guardian;
 
+    /// @notice apeUSD address
+    address public apeUSD;
+
     struct AggregatorInfo {
         /// @notice The base
         address base;
@@ -26,22 +29,44 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential, Denominations {
         bool isUsed;
     }
 
+    struct ReferenceInfo {
+        /// @notice The symbol used in reference
+        string symbol;
+        /// @notice It's being used or not.
+        bool isUsed;
+    }
+
     /// @notice Chainlink Aggregators
     mapping(address => AggregatorInfo) public aggregators;
+
+    /// @notice Band Reference
+    mapping(address => ReferenceInfo) public references;
 
     /// @notice The ChainLink registry address
     FeedRegistryInterface public reg;
 
+    /// @notice The BAND reference address
+    StdReferenceInterface public ref;
+
+    /// @notice Quote symbol we used for BAND reference contract
+    string public constant QUOTE_SYMBOL = "USD";
+
     /**
      * @param admin_ The address of admin to set aggregators
      * @param registry_ The address of ChainLink registry
+     * @param reference_ The address of Band reference
+     * @param apeUSD_ The address of apeUSD
      */
     constructor(
         address admin_,
-        address registry_
+        address registry_,
+        address reference_,
+        address apeUSD_
     ) public {
         admin = admin_;
         reg = FeedRegistryInterface(registry_);
+        ref = StdReferenceInterface(reference_);
+        apeUSD = apeUSD_;
     }
 
     /**
@@ -52,6 +77,11 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential, Denominations {
     function getUnderlyingPrice(CToken cToken) public view returns (uint256) {
         address underlying = CErc20(address(cToken)).underlying();
 
+        if (underlying == apeUSD) {
+            // apeUSD always worth 1
+            return 1e18;
+        }
+
         // Get price from ChainLink.
         AggregatorInfo storage aggregatorInfo = aggregators[underlying];
         if (aggregatorInfo.isUsed) {
@@ -61,6 +91,13 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential, Denominations {
                 uint256 ethUsdPrice = getPriceFromChainlink(Denominations.ETH, Denominations.USD);
                 price = mul_(price, Exp({mantissa: ethUsdPrice}));
             }
+            return getNormalizedPrice(price, underlying);
+        }
+
+        // Get price from Band.
+        ReferenceInfo storage referenceInfo = references[underlying];
+        if (referenceInfo.isUsed) {
+            uint256 price = getPriceFromBAND(referenceInfo.symbol);
             return getNormalizedPrice(price, underlying);
         }
 
@@ -81,6 +118,19 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential, Denominations {
 
         // Extend the decimals to 1e18.
         return mul_(uint256(price), 10**(18 - uint256(reg.decimals(base, quote))));
+    }
+
+    /**
+     * @notice Get price from BAND protocol.
+     * @param symbol The symbol that used to get price of
+     * @return The price, scaled by 1e18
+     */
+    function getPriceFromBAND(string memory symbol) internal view returns (uint256) {
+        StdReferenceInterface.ReferenceData memory data = ref.getReferenceData(symbol, QUOTE_SYMBOL);
+        require(data.rate > 0, "invalid price");
+
+        // Price from BAND is always 1e18 base.
+        return data.rate;
     }
 
     /**
@@ -147,6 +197,29 @@ contract PriceOracleProxyUSD is PriceOracle, Exponential, Denominations {
             }
             aggregators[tokenAddresses[i]] = AggregatorInfo({base: bases[i], quote: quotes[i], isUsed: isUsed});
             emit AggregatorUpdated(tokenAddresses[i], bases[i], quotes[i], isUsed);
+        }
+    }
+
+    /**
+     * @notice Set Band references for multiple tokens
+     * @param tokenAddresses The list of underlying tokens
+     * @param symbols The list of symbols used by Band reference
+     */
+    function _setReferences(address[] calldata tokenAddresses, string[] calldata symbols) external {
+        require(msg.sender == admin || msg.sender == guardian, "only the admin or guardian may set the references");
+        require(tokenAddresses.length == symbols.length, "mismatched data");
+        for (uint256 i = 0; i < tokenAddresses.length; i++) {
+            bool isUsed;
+            if (bytes(symbols[i]).length != 0) {
+                require(msg.sender == admin, "guardian may only clear the reference");
+                isUsed = true;
+
+                // Make sure we could get the price.
+                getPriceFromBAND(symbols[i]);
+            }
+
+            references[tokenAddresses[i]] = ReferenceInfo({symbol: symbols[i], isUsed: isUsed});
+            emit ReferenceUpdated(tokenAddresses[i], symbols[i], isUsed);
         }
     }
 }

@@ -2,16 +2,20 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {deployments, getNamedAccounts} = hre;
+  const {deployments, ethers, getNamedAccounts} = hre;
   const {deploy, get, execute} = deployments;
+  const { parseUnits, } = ethers.utils;
 
   const {deployer, admin, guardian} = await getNamedAccounts();
 
-  if (hre.network.name == 'mainnet') {
-    const { feedRegistry } = await getNamedAccounts();
+  const apeUSDAddress = (await get('ApeUSD')).address;
+
+  const network = hre.network as any;
+  if (network.config.forking || network.name == 'mainnet') {
+    const { feedRegistry, stdReference } = await getNamedAccounts();
     await deploy('PriceOracleProxyUSD', {
       from: deployer,
-      args: [deployer, feedRegistry],
+      args: [deployer, feedRegistry, stdReference, apeUSDAddress],
       log: true,
     });
 
@@ -23,6 +27,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       contract: 'SimplePriceOracle',
       log: true
     });
+
+    await execute('PriceOracleProxyUSD', { from: deployer }, 'setDirectPrice', apeUSDAddress, parseUnits('1', 18));
   }
 };
 func.tags = ['PriceOracleProxyUSD'];

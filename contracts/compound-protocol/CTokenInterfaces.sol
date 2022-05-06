@@ -115,6 +115,11 @@ contract CTokenStorage {
      * @notice Mapping of account addresses to outstanding borrow balances
      */
     mapping(address => BorrowSnapshot) internal accountBorrows;
+
+    /**
+     * @notice The borrow fee of this market
+     */
+    uint256 public borrowFee;
 }
 
 contract CErc20Storage {
@@ -263,6 +268,11 @@ contract CTokenInterface is CTokenStorage {
      */
     event Failure(uint256 error, uint256 info, uint256 detail);
 
+    /**
+     * @notice Bororw fee event
+     */
+    event BorrowFee(uint256 oldBorrowFee, uint256 newBorrowFee);
+
     /*** User Interface ***/
 
     function transfer(address dst, uint256 amount) external returns (bool);
@@ -312,7 +322,8 @@ contract CTokenInterface is CTokenStorage {
     function seize(
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 seizeTokens,
+        uint256 feeTokens
     ) external returns (uint256);
 
     /*** Admin Functions ***/
@@ -328,6 +339,8 @@ contract CTokenInterface is CTokenStorage {
     function _reduceReserves(uint256 reduceAmount) external returns (uint256);
 
     function _setInterestRateModel(InterestRateModel newInterestRateModel) public returns (uint256);
+
+    function _setBorrowFee(uint256 newBorrowFee) public;
 }
 
 contract CErc20Interface is CErc20Storage {

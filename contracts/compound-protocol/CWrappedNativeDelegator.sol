@@ -463,16 +463,19 @@ contract CWrappedNativeDelegator is CTokenInterface, CWrappedNativeInterface, CD
      * @param liquidator The account receiving seized collateral
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
+     * @param feeTokens The number of cTokens as fee
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function seize(
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 seizeTokens,
+        uint256 feeTokens
     ) external returns (uint256) {
         liquidator;
         borrower;
-        seizeTokens; // Shh
+        seizeTokens;
+        feeTokens; // Shh
         delegateAndReturn();
     }
 
@@ -554,6 +557,15 @@ contract CWrappedNativeDelegator is CTokenInterface, CWrappedNativeInterface, CD
      */
     function _setInterestRateModel(InterestRateModel newInterestRateModel) public returns (uint256) {
         newInterestRateModel; // Shh
+        delegateAndReturn();
+    }
+
+    /**
+     * @notice updates the borrow fee
+     * @param newBorrowFee the new borrow fee
+     */
+    function _setBorrowFee(uint256 newBorrowFee) public {
+        newBorrowFee; // Shh
         delegateAndReturn();
     }
 

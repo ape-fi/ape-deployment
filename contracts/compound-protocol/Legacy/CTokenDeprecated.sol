@@ -898,12 +898,11 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
         // (No safe failures beyond this point)
 
         /* We calculate the number of collateral tokens that will be seized */
-        (uint256 amountSeizeError, uint256 seizeTokens) = comptroller.liquidateCalculateSeizeTokens(
+        (uint256 seizeTokens, uint256 feeTokens) = comptroller.liquidateCalculateSeizeTokens(
             address(this),
             address(cTokenCollateral),
             actualRepayAmount
         );
-        require(amountSeizeError == uint256(Error.NO_ERROR), "LIQUIDATE_COMPTROLLER_CALCULATE_AMOUNT_SEIZE_FAILED");
 
         /* Revert if borrower collateral token balance < seizeTokens */
         require(cTokenCollateral.balanceOf(borrower) >= seizeTokens, "LIQUIDATE_SEIZE_TOO_MUCH");
@@ -911,9 +910,9 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
         // If this is also the collateral, run seizeInternal to avoid re-entrancy, otherwise make an external call
         uint256 seizeError;
         if (address(cTokenCollateral) == address(this)) {
-            seizeError = seizeInternal(address(this), liquidator, borrower, seizeTokens);
+            seizeError = seizeInternal(address(this), liquidator, borrower, seizeTokens, feeTokens);
         } else {
-            seizeError = cTokenCollateral.seize(liquidator, borrower, seizeTokens);
+            seizeError = cTokenCollateral.seize(liquidator, borrower, seizeTokens, feeTokens);
         }
 
         /* Revert if seize tokens fails (since we cannot be sure of side effects) */
@@ -942,14 +941,16 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
      * @param liquidator The account receiving seized collateral
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
+     * @param feeTokens The number of cTokens as fee
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function seize(
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 seizeTokens,
+        uint256 feeTokens
     ) external nonReentrant returns (uint256) {
-        return seizeInternal(msg.sender, liquidator, borrower, seizeTokens);
+        return seizeInternal(msg.sender, liquidator, borrower, seizeTokens, feeTokens);
     }
 
     /**
@@ -960,13 +961,15 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
      * @param liquidator The account receiving seized collateral
      * @param borrower The account having collateral seized
      * @param seizeTokens The number of cTokens to seize
+     * @param feeTokens The number of cTokens as fee
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function seizeInternal(
         address seizerToken,
         address liquidator,
         address borrower,
-        uint256 seizeTokens
+        uint256 seizeTokens,
+        uint256 feeTokens
     ) internal returns (uint256) {
         /* Fail if seize not allowed */
         uint256 allowed = comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens);
@@ -979,13 +982,18 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
             return fail(Error.INVALID_ACCOUNT_PAIR, FailureInfo.LIQUIDATE_SEIZE_LIQUIDATOR_IS_BORROWER);
         }
 
+        /* We take half of the liquidation incentive as fee */
+        uint256 bonusTokens = sub_(seizeTokens, feeTokens);
+
         /*
          * We calculate the new borrower and liquidator token balances, failing on underflow/overflow:
          *  borrowerTokensNew = accountTokens[borrower] - seizeTokens
-         *  liquidatorTokensNew = accountTokens[liquidator] + seizeTokens
+         *  liquidatorTokensNew = accountTokens[liquidator] + bonusTokens
+         *  adminTokensNew = accountTokens[admin] + feeTokens
          */
         uint256 borrowerTokensNew = sub_(accountTokens[borrower], seizeTokens);
-        uint256 liquidatorTokensNew = add_(accountTokens[liquidator], seizeTokens);
+        uint256 liquidatorTokensNew = add_(accountTokens[liquidator], bonusTokens);
+        uint256 adminTokensNew = add_(accountTokens[admin], feeTokens);
 
         /////////////////////////
         // EFFECTS & INTERACTIONS
@@ -994,9 +1002,11 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
         /* We write the previously calculated values into storage */
         accountTokens[borrower] = borrowerTokensNew;
         accountTokens[liquidator] = liquidatorTokensNew;
+        accountTokens[admin] = adminTokensNew;
 
         /* Emit a Transfer event */
-        emit Transfer(borrower, liquidator, seizeTokens);
+        emit Transfer(borrower, liquidator, bonusTokens);
+        emit Transfer(borrower, admin, feeTokens);
 
         /* We call the defense hook */
         comptroller.seizeVerify(address(this), seizerToken, liquidator, borrower, seizeTokens);
@@ -1260,6 +1270,14 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
         }
         // _setInterestRateModelFresh emits interest-rate-model-update-specific logs on errors, so we don't need to.
         return _setInterestRateModelFresh(newInterestRateModel);
+    }
+
+    /**
+     * @notice updates the borrow fee
+     * @param newBorrowFee the new borrow fee
+     */
+    function _setBorrowFee(uint256 newBorrowFee) public {
+        newBorrowFee; // Shh
     }
 
     /**
