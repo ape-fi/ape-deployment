@@ -2,7 +2,7 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, ethers, getNamedAccounts, getUnnamedAccounts } = hre;
+  const { deployments, ethers, getNamedAccounts } = hre;
   const { execute, get, read } = deployments;
   const { parseUnits, formatEther } = ethers.utils;
 
@@ -11,9 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     return;
   }
 
-  const { deployer } = await getNamedAccounts();
-  const user1 = (await getUnnamedAccounts())[0];
-  const user2 = (await getUnnamedAccounts())[1];
+  const { deployer, user1, user2 } = await getNamedAccounts();
 
   const apAPEAddress = (await get('apAPE')).address;
 

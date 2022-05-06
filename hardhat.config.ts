@@ -24,6 +24,8 @@ const config: any = {
   },
   namedAccounts: {
     deployer: 0,
+    user1: 1,
+    user2: 2,
     admin: {
       hardhat: 0,
       mainnet: '0x8b16BD85BF8b968890bCc3c52702eE3F90636Ed9',
@@ -51,7 +53,7 @@ const config: any = {
     mainnet: {
       url: `https://rpc.ankr.com/eth`,
       accounts: process.env.DEPLOY_PRIVATE_KEY == undefined ? [] : [`0x${process.env.DEPLOY_PRIVATE_KEY}`]
-    }
+    },
   },
   verify: {
     etherscan: {
