@@ -10,6 +10,17 @@ contract CTokenStorage {
      */
     bool internal _notEntered;
 
+    enum Version {
+        VANILLA,
+        COLLATERALCAP,
+        WRAPPEDNATIVE
+    }
+
+    /**
+     * @notice CToken version
+     */
+    Version public version;
+
     /**
      * @notice EIP-20 token name for this token
      */
@@ -152,11 +163,6 @@ contract CCollateralCapStorage {
      *         If collateral cap is not set, the value should be equal to accountTokens.
      */
     mapping(address => uint256) public accountCollateralTokens;
-
-    /**
-     * @notice Check if accountCollateralTokens have been initialized.
-     */
-    mapping(address => bool) public isCollateralTokenInit;
 
     /**
      * @notice Collateral cap for this CToken, zero for no cap.

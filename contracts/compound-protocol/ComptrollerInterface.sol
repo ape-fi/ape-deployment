@@ -127,8 +127,6 @@ contract ComptrollerInterface {
 interface ComptrollerInterfaceExtension {
     function checkMembership(address account, CToken cToken) external view returns (bool);
 
-    function updateCTokenVersion(address cToken, ComptrollerV1Storage.Version version) external;
-
     function flashloanAllowed(
         address cToken,
         address receiver,

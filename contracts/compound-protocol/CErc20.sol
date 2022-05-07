@@ -30,8 +30,9 @@ contract CErc20 is CToken, CErc20Interface {
         // CToken initialize does the bulk of the work
         super.initialize(comptroller_, interestRateModel_, initialExchangeRateMantissa_, name_, symbol_, decimals_);
 
-        // Set underlying and sanity check it
+        // Set underlying, version and sanity check it
         underlying = underlying_;
+        version = Version.VANILLA;
         EIP20Interface(underlying).totalSupply();
     }
 

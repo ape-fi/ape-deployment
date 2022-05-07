@@ -7,7 +7,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const {deployer} = await getNamedAccounts();
 
-  // FIXME: change to CCollateralCapErc20Delegate
+  await deploy('CCollateralCapErc20Delegate', {
+    from: deployer,
+    log: true
+  });
+
   await deploy('CErc20Delegate', {
     from: deployer,
     log: true

@@ -41,8 +41,9 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         // CToken initialize does the bulk of the work
         super.initialize(comptroller_, interestRateModel_, initialExchangeRateMantissa_, name_, symbol_, decimals_);
 
-        // Set underlying and sanity check it
+        // Set underlying, version and sanity check it
         underlying = underlying_;
+        version = Version.WRAPPEDNATIVE;
         EIP20Interface(underlying).totalSupply();
         WrappedNativeInterface(underlying);
     }

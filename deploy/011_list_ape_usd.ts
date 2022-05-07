@@ -11,7 +11,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const unitrollerAddress = (await get('Unitroller')).address;
   const irmAddress = (await get('StableIRM')).address;
   const cTokenAdminAddress = (await get('CTokenAdmin')).address;
-  // FIXME: CCollateralCapErc20Delegate
   const cTokenImplementationAddress = (await get('CErc20Delegate')).address;
   const exchangeRate = '0.01';
 
@@ -42,8 +41,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await execute('ApeUSD', { from: deployer}, 'setIB', apApeUSD.address);
 
   // support market
-  // FIXME: market version 1
-  await execute('Comptroller', { from: deployer }, '_supportMarket', apApeUSD.address, 0);
+  await execute('Comptroller', { from: deployer }, '_supportMarket', apApeUSD.address);
 
   // supply apeUSD into Ape Finance
   await execute('ApeUSD', { from: deployer }, 'deposit');
@@ -53,6 +51,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // set borrow fee
   await execute('CTokenAdmin', { from: deployer }, '_setBorrowFee', apApeUSD.address, parseUnits('0.005', 18)); // 0.5%
+
+  // set borrow cap
+  const borrowCap = parseUnits('10000000', 18); // $10M
+  await execute('Comptroller', { from: deployer }, '_setMarketBorrowCaps', [apApeUSD.address], [borrowCap]);
 };
 export default func;
 func.tags = ['ListAPE'];

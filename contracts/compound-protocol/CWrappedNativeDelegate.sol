@@ -27,12 +27,8 @@ contract CWrappedNativeDelegate is CWrappedNative {
         }
 
         require(msg.sender == admin, "admin only");
+        require(version == Version.WRAPPEDNATIVE, "mismatch version");
 
-        // Set CToken version in comptroller and convert native token to wrapped token.
-        ComptrollerInterfaceExtension(address(comptroller)).updateCTokenVersion(
-            address(this),
-            ComptrollerV1Storage.Version.WRAPPEDNATIVE
-        );
         uint256 balance = address(this).balance;
         if (balance > 0) {
             WrappedNativeInterface(underlying).deposit.value(balance)();

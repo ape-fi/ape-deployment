@@ -60,9 +60,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /// @notice Emitted when protocol's credit limit has changed
     event CreditLimitChanged(address protocol, address market, uint256 creditLimit);
 
-    /// @notice Emitted when cToken version is changed
-    event NewCTokenVersion(CToken cToken, Version oldVersion, Version newVersion);
-
     /// @notice Emitted when credit limit manager is changed
     event NewCreditLimitManager(address oldCreditLimitManager, address newCreditLimitManager);
 
@@ -118,7 +115,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
 
         require(marketToJoin.isListed, "market not listed");
 
-        if (marketToJoin.version == Version.COLLATERALCAP) {
+        if (cToken.version() == CTokenStorage.Version.COLLATERALCAP) {
             // register collateral for the account if the token is CollateralCap version.
             CCollateralCapErc20Interface(address(cToken)).registerCollateral(account);
         }
@@ -159,7 +156,7 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
 
         Market storage marketToExit = markets[cTokenAddress];
 
-        if (marketToExit.version == Version.COLLATERALCAP) {
+        if (cToken.version() == CTokenStorage.Version.COLLATERALCAP) {
             CCollateralCapErc20Interface(cTokenAddress).unregisterCollateral(msg.sender);
         }
 
@@ -670,25 +667,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     }
 
     /**
-     * @notice Update CToken's version.
-     * @param cToken Version of the asset being updated
-     * @param newVersion The new version
-     */
-    function updateCTokenVersion(address cToken, Version newVersion) external {
-        require(msg.sender == cToken, "cToken only");
-
-        // This function will be called when a new CToken implementation becomes active.
-        // If a new CToken is newly created, this market is not listed yet. The version of
-        // this market will be taken care of when calling `_supportMarket`.
-        if (isMarketListed(cToken)) {
-            Version oldVersion = markets[cToken].version;
-            markets[cToken].version = newVersion;
-
-            emit NewCTokenVersion(CToken(cToken), oldVersion, newVersion);
-        }
-    }
-
-    /**
      * @notice Check if the account is a credit account
      * @param account The account needs to be checked
      * @param cToken The market
@@ -1040,17 +1018,16 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      * @notice Add the market to the markets mapping and set it as listed
      * @dev Admin function to set isListed and add support for the market
      * @param cToken The address of the market (token) to list
-     * @param version The version of the market (token)
      * @return uint 0=success, otherwise a failure. (See enum Error for details)
      */
-    function _supportMarket(CToken cToken, Version version) external returns (uint256) {
+    function _supportMarket(CToken cToken) external returns (uint256) {
         require(msg.sender == admin, "admin only");
         require(!isMarketListed(address(cToken)), "market already listed");
         require(!isMarkertDelisted[address(cToken)], "market has been delisted");
 
         cToken.isCToken(); // Sanity check to make sure its really a CToken
 
-        markets[address(cToken)] = Market({isListed: true, collateralFactorMantissa: 0, version: version});
+        markets[address(cToken)] = Market({isListed: true, collateralFactorMantissa: 0});
 
         _addMarketInternal(address(cToken));
 

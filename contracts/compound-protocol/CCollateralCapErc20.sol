@@ -32,8 +32,9 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         // CToken initialize does the bulk of the work
         super.initialize(comptroller_, interestRateModel_, initialExchangeRateMantissa_, name_, symbol_, decimals_);
 
-        // Set underlying and sanity check it
+        // Set underlying, version and sanity check it
         underlying = underlying_;
+        version = Version.COLLATERALCAP;
         EIP20Interface(underlying).totalSupply();
     }
 
@@ -261,9 +262,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
      * @return The actual registered amount of collateral
      */
     function registerCollateral(address account) external returns (uint256) {
-        // Make sure accountCollateralTokens of `account` is initialized.
-        initializeAccountCollateralTokens(account);
-
         require(msg.sender == address(comptroller), "comptroller only");
 
         uint256 amount = sub_(accountTokens[account], accountCollateralTokens[account]);
@@ -276,9 +274,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
      * @param account The account to unregister
      */
     function unregisterCollateral(address account) external {
-        // Make sure accountCollateralTokens of `account` is initialized.
-        initializeAccountCollateralTokens(account);
-
         require(msg.sender == address(comptroller), "comptroller only");
         require(comptroller.redeemAllowed(address(this), account, accountCollateralTokens[account]) == 0, "rejected");
 
@@ -305,30 +300,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
     function getCashOnChain() internal view returns (uint256) {
         EIP20Interface token = EIP20Interface(underlying);
         return token.balanceOf(address(this));
-    }
-
-    /**
-     * @notice Initialize the account's collateral tokens. This function should be called in the beginning of every function
-     *  that accesses accountCollateralTokens or accountTokens.
-     * @param account The account of accountCollateralTokens that needs to be updated
-     */
-    function initializeAccountCollateralTokens(address account) internal {
-        /**
-         * If isCollateralTokenInit is false, it means accountCollateralTokens was not initialized yet.
-         * This case will only happen once and must be the very beginning. accountCollateralTokens is a new structure and its
-         * initial value should be equal to accountTokens if user has entered the market. However, it's almost impossible to
-         * check every user's value when the implementation becomes active. Therefore, it must rely on every action which will
-         * access accountTokens to call this function to check if accountCollateralTokens needed to be initialized.
-         */
-        if (!isCollateralTokenInit[account]) {
-            if (ComptrollerInterfaceExtension(address(comptroller)).checkMembership(account, CToken(this))) {
-                accountCollateralTokens[account] = accountTokens[account];
-                totalCollateralTokens = add_(totalCollateralTokens, accountTokens[account]);
-
-                emit UserCollateralChanged(account, accountCollateralTokens[account]);
-            }
-            isCollateralTokenInit[account] = true;
-        }
     }
 
     /**
@@ -432,10 +403,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         address dst,
         uint256 tokens
     ) internal returns (uint256) {
-        // Make sure accountCollateralTokens of `src` and `dst` are initialized.
-        initializeAccountCollateralTokens(src);
-        initializeAccountCollateralTokens(dst);
-
         /**
          * For every user, accountTokens must be greater than or equal to accountCollateralTokens.
          * The buffer between the two values will be transferred first.
@@ -490,18 +457,11 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
     }
 
     /**
-     * @notice Get the account's cToken balances
+     * @notice Get the account's cToken collateral balances
      * @param account The address of the account
      */
     function getCTokenBalanceInternal(address account) internal view returns (uint256) {
-        if (isCollateralTokenInit[account]) {
-            return accountCollateralTokens[account];
-        } else {
-            /**
-             * If the value of accountCollateralTokens was not initialized, we should return the value of accountTokens.
-             */
-            return accountTokens[account];
-        }
+        return accountCollateralTokens[account];
     }
 
     /**
@@ -573,9 +533,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         uint256 mintAmount,
         bool isNative
     ) internal returns (uint256, uint256) {
-        // Make sure accountCollateralTokens of `minter` is initialized.
-        initializeAccountCollateralTokens(minter);
-
         /* Fail if mint not allowed */
         require(comptroller.mintAllowed(address(this), minter, mintAmount) == 0, "rejected");
 
@@ -660,9 +617,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         uint256 redeemAmountIn,
         bool isNative
     ) internal returns (uint256) {
-        // Make sure accountCollateralTokens of `redeemer` is initialized.
-        initializeAccountCollateralTokens(redeemer);
-
         require(redeemTokensIn == 0 || redeemAmountIn == 0, "bad input");
 
         RedeemLocalVars memory vars;
@@ -763,10 +717,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         uint256 seizeTokens,
         uint256 feeTokens
     ) internal returns (uint256) {
-        // Make sure accountCollateralTokens of `liquidator` and `borrower` are initialized.
-        initializeAccountCollateralTokens(liquidator);
-        initializeAccountCollateralTokens(borrower);
-
         /* Fail if seize not allowed */
         require(
             comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens) == 0,

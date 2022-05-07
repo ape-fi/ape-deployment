@@ -14,8 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true
   });
 
-  await execute('ApeUSD', { from: deployer }, 'mint', parseUnits('1000000', 18));
-  await execute('ApeUSD', { from: deployer }, 'setGov', admin);
+  await execute('ApeUSD', { from: deployer }, 'mint', parseUnits('10000000', 18));
 };
 export default func;
 func.tags = ['ApeUSD'];

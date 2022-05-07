@@ -46,12 +46,6 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
      */
     mapping(address => CToken[]) public accountAssets;
 
-    enum Version {
-        VANILLA,
-        COLLATERALCAP,
-        WRAPPEDNATIVE
-    }
-
     struct Market {
         /// @notice Whether or not this market is listed
         bool isListed;
@@ -63,8 +57,6 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
         uint256 collateralFactorMantissa;
         /// @notice Per-market mapping of "accounts in this asset"
         mapping(address => bool) accountMembership;
-        /// @notice CToken version
-        Version version;
     }
 
     /**

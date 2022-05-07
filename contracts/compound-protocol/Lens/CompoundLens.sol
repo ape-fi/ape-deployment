@@ -8,14 +8,6 @@ import "../PriceOracle/PriceOracle.sol";
 import "../EIP20Interface.sol";
 import "../Exponential.sol";
 
-interface CSLPInterface {
-    function claimSushi(address) external returns (uint256);
-}
-
-interface CCTokenInterface {
-    function claimComp(address) external returns (uint256);
-}
-
 contract CompoundLens is Exponential {
     struct CTokenMetadata {
         address cToken;
@@ -33,7 +25,7 @@ contract CompoundLens is Exponential {
         address underlyingAssetAddress;
         uint256 cTokenDecimals;
         uint256 underlyingDecimals;
-        ComptrollerV1Storage.Version version;
+        CToken.Version version;
         uint256 collateralCap;
         uint256 underlyingPrice;
         bool supplyPaused;
@@ -48,9 +40,7 @@ contract CompoundLens is Exponential {
         PriceOracle priceOracle
     ) internal returns (CTokenMetadata memory) {
         uint256 exchangeRateCurrent = cToken.exchangeRateCurrent();
-        (bool isListed, uint256 collateralFactorMantissa, ComptrollerV1Storage.Version version) = comptroller.markets(
-            address(cToken)
-        );
+        (bool isListed, uint256 collateralFactorMantissa) = comptroller.markets(address(cToken));
         address underlyingAssetAddress;
         uint256 underlyingDecimals;
         uint256 collateralCap;
@@ -65,10 +55,10 @@ contract CompoundLens is Exponential {
             underlyingDecimals = EIP20Interface(cErc20.underlying()).decimals();
         }
 
-        if (version == ComptrollerV1Storage.Version.COLLATERALCAP) {
+        if (cToken.version() == CTokenStorage.Version.COLLATERALCAP) {
             collateralCap = CCollateralCapErc20Interface(address(cToken)).collateralCap();
             totalCollateralTokens = CCollateralCapErc20Interface(address(cToken)).totalCollateralTokens();
-        } else if (version == ComptrollerV1Storage.Version.WRAPPEDNATIVE) {
+        } else if (cToken.version() == CTokenStorage.Version.WRAPPEDNATIVE) {
             collateralCap = CWrappedNativeInterface(address(cToken)).collateralCap();
             totalCollateralTokens = CWrappedNativeInterface(address(cToken)).totalCollateralTokens();
         }
@@ -90,7 +80,7 @@ contract CompoundLens is Exponential {
                 underlyingAssetAddress: underlyingAssetAddress,
                 cTokenDecimals: cToken.decimals(),
                 underlyingDecimals: underlyingDecimals,
-                version: version,
+                version: cToken.version(),
                 collateralCap: collateralCap,
                 underlyingPrice: priceOracle.getUnderlyingPrice(cToken),
                 supplyPaused: comptroller.mintGuardianPaused(address(cToken)),

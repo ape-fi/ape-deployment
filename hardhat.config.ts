@@ -28,11 +28,11 @@ const config: any = {
     user2: 2,
     admin: {
       hardhat: 0,
-      mainnet: '0x8b16BD85BF8b968890bCc3c52702eE3F90636Ed9',
+      mainnet: '0x02cA76E87779412a77Ee77C3600D72F68b9ea68C',
     },
     guardian: {
       hardhat: 0,
-      mainnet: '0x8b16BD85BF8b968890bCc3c52702eE3F90636Ed9',
+      mainnet: '0xdcc406dA85E263641C5692A9749E08998409fbF5',
     },
     feedRegistry: {
       default: '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf'

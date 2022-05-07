@@ -27,15 +27,10 @@ contract CCollateralCapErc20Delegate is CCollateralCapErc20 {
         }
 
         require(msg.sender == admin, "admin only");
+        require(version == Version.COLLATERALCAP, "mismatch version");
 
         // Set internal cash when becoming implementation
         internalCash = getCashOnChain();
-
-        // Set CToken version in comptroller
-        ComptrollerInterfaceExtension(address(comptroller)).updateCTokenVersion(
-            address(this),
-            ComptrollerV1Storage.Version.COLLATERALCAP
-        );
     }
 
     /**

@@ -11,8 +11,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
   });
-
-  await execute('Unitroller', { from: deployer }, '_setPendingAdmin', admin);
 };
 export default func;
 func.tags = ['Unitroller'];

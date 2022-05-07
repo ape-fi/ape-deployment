@@ -20,7 +20,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
     await execute('PriceOracleProxyUSD', {from: deployer}, '_setGuardian', guardian);
-    await execute('PriceOracleProxyUSD', {from: deployer}, '_setAdmin', admin);
   } else {
     await deploy('PriceOracleProxyUSD', {
       from: deployer,
