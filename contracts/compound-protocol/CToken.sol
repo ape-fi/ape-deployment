@@ -176,43 +176,6 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
     }
 
     /**
-     * @notice Returns the estimated per-block borrow interest rate for this cToken after some change
-     * @return The borrow interest rate per block, scaled by 1e18
-     */
-    function estimateBorrowRatePerBlockAfterChange(uint256 change, bool repay) external view returns (uint256) {
-        uint256 cashPriorNew;
-        uint256 totalBorrowsNew;
-
-        if (repay) {
-            cashPriorNew = add_(getCashPrior(), change);
-            totalBorrowsNew = sub_(totalBorrows, change);
-        } else {
-            cashPriorNew = sub_(getCashPrior(), change);
-            totalBorrowsNew = add_(totalBorrows, change);
-        }
-        return interestRateModel.getBorrowRate(cashPriorNew, totalBorrowsNew, totalReserves);
-    }
-
-    /**
-     * @notice Returns the estimated per-block supply interest rate for this cToken after some change
-     * @return The supply interest rate per block, scaled by 1e18
-     */
-    function estimateSupplyRatePerBlockAfterChange(uint256 change, bool repay) external view returns (uint256) {
-        uint256 cashPriorNew;
-        uint256 totalBorrowsNew;
-
-        if (repay) {
-            cashPriorNew = add_(getCashPrior(), change);
-            totalBorrowsNew = sub_(totalBorrows, change);
-        } else {
-            cashPriorNew = sub_(getCashPrior(), change);
-            totalBorrowsNew = add_(totalBorrows, change);
-        }
-
-        return interestRateModel.getSupplyRate(cashPriorNew, totalBorrowsNew, totalReserves, reserveFactorMantissa);
-    }
-
-    /**
      * @notice Returns the current total borrows plus accrued interest
      * @return The total borrows with interest
      */
@@ -381,52 +344,62 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
     /**
      * @notice Sender supplies assets into the market and receives cTokens in exchange
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * @param minter the minter
      * @param mintAmount The amount of the underlying asset to supply
      * @param isNative The amount is in native or not
      * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual mint amount.
      */
-    function mintInternal(uint256 mintAmount, bool isNative) internal nonReentrant returns (uint256, uint256) {
+    function mintInternal(
+        address minter,
+        uint256 mintAmount,
+        bool isNative
+    ) internal nonReentrant returns (uint256, uint256) {
         accrueInterest();
         // mintFresh emits the actual Mint event if successful and logs on errors, so we don't need to
-        return mintFresh(msg.sender, mintAmount, isNative);
+        return mintFresh(msg.sender, minter, mintAmount, isNative);
     }
 
     /**
      * @notice Sender redeems cTokens in exchange for the underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * @param redeemer The redeemer
      * @param redeemTokens The number of cTokens to redeem into underlying
-     * @param isNative The amount is in native or not
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
-     */
-    function redeemInternal(uint256 redeemTokens, bool isNative) internal nonReentrant returns (uint256) {
-        accrueInterest();
-        // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        return redeemFresh(msg.sender, redeemTokens, 0, isNative);
-    }
-
-    /**
-     * @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
-     * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to receive from redeeming cTokens
      * @param isNative The amount is in native or not
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function redeemUnderlyingInternal(uint256 redeemAmount, bool isNative) internal nonReentrant returns (uint256) {
+    function redeemInternal(
+        address payable redeemer,
+        uint256 redeemTokens,
+        uint256 redeemAmount,
+        bool isNative
+    ) internal nonReentrant returns (uint256) {
+        // Only helper contract or redeemer itself could redeem.
+        require(msg.sender == helper || msg.sender == redeemer, "invalid redeemer");
+
         accrueInterest();
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        return redeemFresh(msg.sender, 0, redeemAmount, isNative);
+        return redeemFresh(redeemer, redeemTokens, redeemAmount, isNative);
     }
 
     /**
      * @notice Sender borrows assets from the protocol to their own address
+     * @param borrower The borrower
      * @param borrowAmount The amount of the underlying asset to borrow
      * @param isNative The amount is in native or not
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function borrowInternal(uint256 borrowAmount, bool isNative) internal nonReentrant returns (uint256) {
+    function borrowInternal(
+        address payable borrower,
+        uint256 borrowAmount,
+        bool isNative
+    ) internal nonReentrant returns (uint256) {
+        // Only helper contract or borrower itself could borrow.
+        require(msg.sender == helper || msg.sender == borrower, "invalid borrower");
+
         accrueInterest();
         // borrowFresh emits borrow-specific logs on errors, so we don't need to
-        return borrowFresh(msg.sender, borrowAmount, isNative);
+        return borrowFresh(borrower, borrowAmount, isNative);
     }
 
     struct BorrowLocalVars {
@@ -501,25 +474,13 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
     }
 
     /**
-     * @notice Sender repays their own borrow
-     * @param repayAmount The amount to repay
-     * @param isNative The amount is in native or not
-     * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual repayment amount.
-     */
-    function repayBorrowInternal(uint256 repayAmount, bool isNative) internal nonReentrant returns (uint256, uint256) {
-        accrueInterest();
-        // repayBorrowFresh emits repay-borrow-specific logs on errors, so we don't need to
-        return repayBorrowFresh(msg.sender, msg.sender, repayAmount, isNative);
-    }
-
-    /**
      * @notice Sender repays a borrow belonging to borrower
      * @param borrower the account with the debt being payed off
      * @param repayAmount The amount to repay
      * @param isNative The amount is in native or not
      * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual repayment amount.
      */
-    function repayBorrowBehalfInternal(
+    function repayBorrowInternal(
         address borrower,
         uint256 repayAmount,
         bool isNative
@@ -1038,6 +999,19 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         emit BorrowFee(oldBorrowFee, newBorrowFee);
     }
 
+    /**
+     * @notice updates the helper
+     * @param newHelper the new helper
+     */
+    function _setHelper(address newHelper) public {
+        require(msg.sender == admin, "admin only");
+
+        address oldHelper = helper;
+        helper = newHelper;
+
+        emit HelperSet(oldHelper, newHelper);
+    }
+
     /*** Safe Token ***/
 
     /**
@@ -1089,6 +1063,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @dev Assumes interest has already been accrued up to the current block
      */
     function mintFresh(
+        address payer,
         address minter,
         uint256 mintAmount,
         bool isNative

@@ -131,6 +131,11 @@ contract CTokenStorage {
      * @notice The borrow fee of this market
      */
     uint256 public borrowFee;
+
+    /**
+     * @notice Helper contract address of this contract
+     */
+    address public helper;
 }
 
 contract CErc20Storage {
@@ -188,7 +193,7 @@ contract CTokenInterface is CTokenStorage {
     /**
      * @notice Event emitted when tokens are minted
      */
-    event Mint(address minter, uint256 mintAmount, uint256 mintTokens);
+    event Mint(address payer, address minter, uint256 mintAmount, uint256 mintTokens);
 
     /**
      * @notice Event emitted when tokens are redeemed
@@ -279,6 +284,11 @@ contract CTokenInterface is CTokenStorage {
      */
     event BorrowFee(uint256 oldBorrowFee, uint256 newBorrowFee);
 
+    /**
+     * @notice Helper event
+     */
+    event HelperSet(address oldHelper, address newHelper);
+
     /*** User Interface ***/
 
     function transfer(address dst, uint256 amount) external returns (bool);
@@ -347,22 +357,24 @@ contract CTokenInterface is CTokenStorage {
     function _setInterestRateModel(InterestRateModel newInterestRateModel) public returns (uint256);
 
     function _setBorrowFee(uint256 newBorrowFee) public;
+
+    function _setHelper(address newHelper) public;
 }
 
 contract CErc20Interface is CErc20Storage {
     /*** User Interface ***/
 
-    function mint(uint256 mintAmount) external returns (uint256);
+    function mint(address minter, uint256 mintAmount) external returns (uint256);
 
-    function redeem(uint256 redeemTokens) external returns (uint256);
+    function redeem(
+        address payable redeemer,
+        uint256 redeemTokens,
+        uint256 redeemAmount
+    ) external returns (uint256);
 
-    function redeemUnderlying(uint256 redeemAmount) external returns (uint256);
+    function borrow(address payable borrower, uint256 borrowAmount) external returns (uint256);
 
-    function borrow(uint256 borrowAmount) external returns (uint256);
-
-    function repayBorrow(uint256 repayAmount) external returns (uint256);
-
-    function repayBorrowBehalf(address borrower, uint256 repayAmount) external returns (uint256);
+    function repayBorrow(address borrower, uint256 repayAmount) external returns (uint256);
 
     function liquidateBorrow(
         address borrower,
@@ -388,17 +400,17 @@ contract CWrappedNativeInterface is CErc20Interface {
 
     /*** User Interface ***/
 
-    function mintNative() external payable returns (uint256);
+    function mintNative(address minter) external payable returns (uint256);
 
-    function redeemNative(uint256 redeemTokens) external returns (uint256);
+    function redeemNative(
+        address payable redeemer,
+        uint256 redeemTokens,
+        uint256 redeemAmount
+    ) external returns (uint256);
 
-    function redeemUnderlyingNative(uint256 redeemAmount) external returns (uint256);
+    function borrowNative(address payable borrower, uint256 borrowAmount) external returns (uint256);
 
-    function borrowNative(uint256 borrowAmount) external returns (uint256);
-
-    function repayBorrowNative() external payable returns (uint256);
-
-    function repayBorrowBehalfNative(address borrower) external payable returns (uint256);
+    function repayBorrowNative(address borrower) external payable returns (uint256);
 
     function liquidateBorrowNative(address borrower, CTokenInterface cTokenCollateral)
         external

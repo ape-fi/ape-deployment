@@ -50,21 +50,18 @@ contract CEther is CTokenDeprecated {
     /**
      * @notice Sender redeems cTokens in exchange for the underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * @param redeemer The redeemer
      * @param redeemTokens The number of cTokens to redeem into underlying
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
-     */
-    function redeem(uint256 redeemTokens) external returns (uint256) {
-        return redeemInternal(redeemTokens);
-    }
-
-    /**
-     * @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
-     * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to redeem
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function redeemUnderlying(uint256 redeemAmount) external returns (uint256) {
-        return redeemUnderlyingInternal(redeemAmount);
+    function redeem(
+        address redeemer,
+        uint256 redeemTokens,
+        uint256 redeemAmount
+    ) external returns (uint256) {
+        redeemer; // Shh
+        return redeemInternal(redeemTokens, redeemAmount);
     }
 
     /**
@@ -72,7 +69,8 @@ contract CEther is CTokenDeprecated {
      * @param borrowAmount The amount of the underlying asset to borrow
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function borrow(uint256 borrowAmount) external returns (uint256) {
+    function borrow(address payable borrower, uint256 borrowAmount) external returns (uint256) {
+        borrower; // Shh
         return borrowInternal(borrowAmount);
     }
 

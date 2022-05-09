@@ -435,7 +435,7 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
      */
     function mintFresh(address minter, uint256 mintAmount) internal returns (uint256, uint256) {
         /* Fail if mint not allowed */
-        uint256 allowed = comptroller.mintAllowed(address(this), minter, mintAmount);
+        uint256 allowed = comptroller.mintAllowed(address(this), minter, minter, mintAmount);
         if (allowed != 0) {
             return (failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.MINT_COMPTROLLER_REJECTION, allowed), 0);
         }
@@ -483,11 +483,11 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
         accountTokens[minter] = vars.accountTokensNew;
 
         /* We emit a Mint event, and a Transfer event */
-        emit Mint(minter, vars.actualMintAmount, vars.mintTokens);
+        emit Mint(minter, minter, vars.actualMintAmount, vars.mintTokens);
         emit Transfer(address(this), minter, vars.mintTokens);
 
         /* We call the defense hook */
-        comptroller.mintVerify(address(this), minter, vars.actualMintAmount, vars.mintTokens);
+        comptroller.mintVerify(address(this), minter, minter, vars.actualMintAmount, vars.mintTokens);
 
         return (uint256(Error.NO_ERROR), vars.actualMintAmount);
     }
@@ -496,32 +496,17 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
      * @notice Sender redeems cTokens in exchange for the underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemTokens The number of cTokens to redeem into underlying
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
-     */
-    function redeemInternal(uint256 redeemTokens) internal nonReentrant returns (uint256) {
-        uint256 error = accrueInterest();
-        if (error != uint256(Error.NO_ERROR)) {
-            // accrueInterest emits logs on errors, but we still want to log the fact that an attempted redeem failed
-            return fail(Error(error), FailureInfo.REDEEM_ACCRUE_INTEREST_FAILED);
-        }
-        // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        return redeemFresh(msg.sender, redeemTokens, 0);
-    }
-
-    /**
-     * @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
-     * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param redeemAmount The amount of underlying to receive from redeeming cTokens
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function redeemUnderlyingInternal(uint256 redeemAmount) internal nonReentrant returns (uint256) {
+    function redeemInternal(uint256 redeemTokens, uint256 redeemAmount) internal nonReentrant returns (uint256) {
         uint256 error = accrueInterest();
         if (error != uint256(Error.NO_ERROR)) {
             // accrueInterest emits logs on errors, but we still want to log the fact that an attempted redeem failed
             return fail(Error(error), FailureInfo.REDEEM_ACCRUE_INTEREST_FAILED);
         }
         // redeemFresh emits redeem-specific logs on errors, so we don't need to
-        return redeemFresh(msg.sender, 0, redeemAmount);
+        return redeemFresh(msg.sender, redeemTokens, redeemAmount);
     }
 
     struct RedeemLocalVars {
@@ -1278,6 +1263,14 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
      */
     function _setBorrowFee(uint256 newBorrowFee) public {
         newBorrowFee; // Shh
+    }
+
+    /**
+     * @notice updates the helper
+     * @param newHelper the new helper
+     */
+    function _setHelper(address newHelper) public {
+        newHelper; // Shh
     }
 
     /**

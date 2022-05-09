@@ -207,12 +207,14 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /**
      * @notice Checks if the account should be allowed to mint tokens in the given market
      * @param cToken The market to verify the mint against
+     * @param payer the account paying for the mint
      * @param minter The account which would get the minted tokens
      * @param mintAmount The amount of underlying being supplied to the market in exchange for tokens
      * @return 0 if the mint is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
      */
     function mintAllowed(
         address cToken,
+        address payer,
         address minter,
         uint256 mintAmount
     ) external returns (uint256) {
@@ -253,18 +255,21 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /**
      * @notice Validates mint and reverts on rejection. May emit logs.
      * @param cToken Asset being minted
+     * @param payer the account paying for the mint
      * @param minter The address minting the tokens
      * @param actualMintAmount The amount of the underlying asset being minted
      * @param mintTokens The number of tokens being minted
      */
     function mintVerify(
         address cToken,
+        address payer,
         address minter,
         uint256 actualMintAmount,
         uint256 mintTokens
     ) external {
         // Shh - currently unused
         cToken;
+        payer;
         minter;
         actualMintAmount;
         mintTokens;

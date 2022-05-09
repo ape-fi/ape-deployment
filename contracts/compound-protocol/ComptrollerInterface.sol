@@ -16,6 +16,7 @@ contract ComptrollerInterface {
     /*** Policy Hooks ***/
 
     function mintAllowed(
+        address payer,
         address cToken,
         address minter,
         uint256 mintAmount
@@ -23,6 +24,7 @@ contract ComptrollerInterface {
 
     function mintVerify(
         address cToken,
+        address payer,
         address minter,
         uint256 mintAmount,
         uint256 mintTokens

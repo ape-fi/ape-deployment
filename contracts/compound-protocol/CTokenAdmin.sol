@@ -178,6 +178,15 @@ contract CTokenAdmin is Exponential {
     }
 
     /**
+     * @notice Set cToken helper
+     * @param cToken The cToken address
+     * @param newHelper the new helper
+     */
+    function _setHelper(address cToken, address newHelper) external onlyAdmin {
+        CTokenInterface(cToken)._setHelper(newHelper);
+    }
+
+    /**
      * @notice Set cToken collateral cap
      * @dev It will revert if the cToken is not CCollateralCap.
      * @param cToken The cToken address

@@ -11,6 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (network.config.forking || network.name == 'mainnet') {
     await execute('Unitroller', { from: deployer }, '_setPendingAdmin', admin);
     await execute('CTokenAdmin', { from: deployer }, 'setAdmin', admin);
+    await execute('CTokenHelper', { from: deployer }, 'transferOwnership', admin);
     await execute('ApeUSD', { from: deployer }, 'setGov', admin);
     await execute('PriceOracleProxyUSD', {from: deployer}, '_setAdmin', admin);
   }

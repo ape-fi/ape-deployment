@@ -2,8 +2,14 @@
 pragma solidity ^0.8.6;
 
 interface ibToken {
-    function mint(uint) external returns (uint);
-    function redeemUnderlying(uint) external returns (uint);
+    function mint(address minter, uint256 mintAmount)
+        external
+        returns (uint256);
+    function redeem(
+        address payable redeemer,
+        uint256 redeemTokens,
+        uint256 redeemAmount
+    ) external returns (uint256);
     function exchangeRateStored() external view returns (uint);
     function balanceOf(address) external view returns (uint);
 }
@@ -58,7 +64,7 @@ contract FixedForex {
     }
 
     function _redeem(uint amount) internal {
-        require(ib.redeemUnderlying(amount) == 0, "ib: withdraw failed");
+        require(ib.redeem(payable(address(this)), 0, amount) == 0, "ib: withdraw failed");
     }
 
     function profit() external {
@@ -77,7 +83,7 @@ contract FixedForex {
         uint _amount = balances[address(this)];
         allowances[address(this)][address(ib)] = _amount;
         liquidity += _amount;
-        require(ib.mint(_amount) == 0, "ib: supply failed");
+        require(ib.mint(address(this), _amount) == 0, "ib: supply failed");
     }
 
     /// @notice Total number of tokens in circulation

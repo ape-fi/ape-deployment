@@ -86,10 +86,12 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
     /**
      * @notice Sender supplies assets into the market and receives cTokens in exchange
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * @param minter the minter
      * @param mintAmount The amount of the underlying asset to supply
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function mint(uint256 mintAmount) external returns (uint256) {
+    function mint(address minter, uint256 mintAmount) external returns (uint256) {
+        minter;
         mintAmount; // Shh
         delegateAndReturn();
     }
@@ -97,42 +99,31 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
     /**
      * @notice Sender redeems cTokens in exchange for the underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * @param redeemer The redeemer
      * @param redeemTokens The number of cTokens to redeem into underlying
+     * @param redeemAmount The amount of underlying to receive from redeeming cTokens
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function redeem(uint256 redeemTokens) external returns (uint256) {
-        redeemTokens; // Shh
-        delegateAndReturn();
-    }
-
-    /**
-     * @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
-     * @dev Accrues interest whether or not the operation succeeds, unless reverted
-     * @param redeemAmount The amount of underlying to redeem
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
-     */
-    function redeemUnderlying(uint256 redeemAmount) external returns (uint256) {
+    function redeem(
+        address payable redeemer,
+        uint256 redeemTokens,
+        uint256 redeemAmount
+    ) external returns (uint256) {
+        redeemer;
+        redeemTokens;
         redeemAmount; // Shh
         delegateAndReturn();
     }
 
     /**
      * @notice Sender borrows assets from the protocol to their own address
+     * @param borrower The borrower
      * @param borrowAmount The amount of the underlying asset to borrow
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function borrow(uint256 borrowAmount) external returns (uint256) {
+    function borrow(address payable borrower, uint256 borrowAmount) external returns (uint256) {
+        borrower;
         borrowAmount; // Shh
-        delegateAndReturn();
-    }
-
-    /**
-     * @notice Sender repays their own borrow
-     * @param repayAmount The amount to repay
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
-     */
-    function repayBorrow(uint256 repayAmount) external returns (uint256) {
-        repayAmount; // Shh
         delegateAndReturn();
     }
 
@@ -142,7 +133,7 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      * @param repayAmount The amount to repay
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function repayBorrowBehalf(address borrower, uint256 repayAmount) external returns (uint256) {
+    function repayBorrow(address borrower, uint256 repayAmount) external returns (uint256) {
         borrower;
         repayAmount; // Shh
         delegateAndReturn();
@@ -444,6 +435,15 @@ contract CErc20Delegator is CTokenInterface, CErc20Interface, CDelegatorInterfac
      */
     function _setBorrowFee(uint256 newBorrowFee) public {
         newBorrowFee; // Shh
+        delegateAndReturn();
+    }
+
+    /**
+     * @notice updates the helper
+     * @param newHelper the new helper
+     */
+    function _setHelper(address newHelper) public {
+        newHelper; // Shh
         delegateAndReturn();
     }
 

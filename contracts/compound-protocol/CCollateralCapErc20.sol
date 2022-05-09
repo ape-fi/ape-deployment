@@ -43,51 +43,39 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
     /**
      * @notice Sender supplies assets into the market and receives cTokens in exchange
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * @param minter the minter
      * @param mintAmount The amount of the underlying asset to supply
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function mint(uint256 mintAmount) external returns (uint256) {
-        (uint256 err, ) = mintInternal(mintAmount, false);
+    function mint(address minter, uint256 mintAmount) external returns (uint256) {
+        (uint256 err, ) = mintInternal(minter, mintAmount, false);
         require(err == 0, "mint failed");
     }
 
     /**
      * @notice Sender redeems cTokens in exchange for the underlying asset
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * @param redeemer The redeemer
      * @param redeemTokens The number of cTokens to redeem into underlying
+     * @param redeemAmount The amount of underlying to receive from redeeming cTokens
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function redeem(uint256 redeemTokens) external returns (uint256) {
-        require(redeemInternal(redeemTokens, false) == 0, "redeem failed");
-    }
-
-    /**
-     * @notice Sender redeems cTokens in exchange for a specified amount of underlying asset
-     * @dev Accrues interest whether or not the operation succeeds, unless reverted
-     * @param redeemAmount The amount of underlying to redeem
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
-     */
-    function redeemUnderlying(uint256 redeemAmount) external returns (uint256) {
-        require(redeemUnderlyingInternal(redeemAmount, false) == 0, "redeem underlying failed");
+    function redeem(
+        address payable redeemer,
+        uint256 redeemTokens,
+        uint256 redeemAmount
+    ) external returns (uint256) {
+        require(redeemInternal(redeemer, redeemTokens, redeemAmount, false) == 0, "redeem failed");
     }
 
     /**
      * @notice Sender borrows assets from the protocol to their own address
+     * @param borrower The borrower
      * @param borrowAmount The amount of the underlying asset to borrow
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function borrow(uint256 borrowAmount) external returns (uint256) {
-        require(borrowInternal(borrowAmount, false) == 0, "borrow failed");
-    }
-
-    /**
-     * @notice Sender repays their own borrow
-     * @param repayAmount The amount to repay
-     * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
-     */
-    function repayBorrow(uint256 repayAmount) external returns (uint256) {
-        (uint256 err, ) = repayBorrowInternal(repayAmount, false);
-        require(err == 0, "repay failed");
+    function borrow(address payable borrower, uint256 borrowAmount) external returns (uint256) {
+        require(borrowInternal(borrower, borrowAmount, false) == 0, "borrow failed");
     }
 
     /**
@@ -96,9 +84,9 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
      * @param repayAmount The amount to repay
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function repayBorrowBehalf(address borrower, uint256 repayAmount) external returns (uint256) {
-        (uint256 err, ) = repayBorrowBehalfInternal(borrower, repayAmount, false);
-        require(err == 0, "repay behalf failed");
+    function repayBorrow(address borrower, uint256 repayAmount) external returns (uint256) {
+        (uint256 err, ) = repayBorrowInternal(borrower, repayAmount, false);
+        require(err == 0, "repay failed");
     }
 
     /**
@@ -523,18 +511,20 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
     /**
      * @notice User supplies assets into the market and receives cTokens in exchange
      * @dev Assumes interest has already been accrued up to the current block
+     * @param payer the account paying for the mint
      * @param minter The address of the account which is supplying the assets
      * @param mintAmount The amount of the underlying asset to supply
      * @param isNative The amount is in native or not
      * @return (uint, uint) An error code (0=success, otherwise a failure, see ErrorReporter.sol), and the actual mint amount.
      */
     function mintFresh(
+        address payer,
         address minter,
         uint256 mintAmount,
         bool isNative
     ) internal returns (uint256, uint256) {
         /* Fail if mint not allowed */
-        require(comptroller.mintAllowed(address(this), minter, mintAmount) == 0, "rejected");
+        require(comptroller.mintAllowed(address(this), payer, minter, mintAmount) == 0, "rejected");
 
         /*
          * Return if mintAmount is zero.
@@ -556,14 +546,14 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         // (No safe failures beyond this point)
 
         /*
-         *  We call `doTransferIn` for the minter and the mintAmount.
+         *  We call `doTransferIn` for the payer and the mintAmount.
          *  Note: The cToken must handle variations between ERC-20 and ETH underlying.
          *  `doTransferIn` reverts if anything goes wrong, since we can't be sure if
          *  side-effects occurred. The function returns the amount actually transferred,
          *  in case of a fee. On success, the cToken holds an additional `actualMintAmount`
          *  of cash.
          */
-        vars.actualMintAmount = doTransferIn(minter, mintAmount, isNative);
+        vars.actualMintAmount = doTransferIn(payer, mintAmount, isNative);
 
         /*
          * We get the current exchange rate and calculate the number of cTokens to be minted:
@@ -587,11 +577,11 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         }
 
         /* We emit a Mint event, and a Transfer event */
-        emit Mint(minter, vars.actualMintAmount, vars.mintTokens);
+        emit Mint(payer, minter, vars.actualMintAmount, vars.mintTokens);
         emit Transfer(address(this), minter, vars.mintTokens);
 
         /* We call the defense hook */
-        comptroller.mintVerify(address(this), minter, vars.actualMintAmount, vars.mintTokens);
+        comptroller.mintVerify(address(this), payer, minter, vars.actualMintAmount, vars.mintTokens);
 
         return (uint256(Error.NO_ERROR), vars.actualMintAmount);
     }
