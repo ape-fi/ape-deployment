@@ -10,7 +10,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await deploy('ApeUSD', {
     from: deployer,
-    contract: 'FixedForex',
     log: true
   });
 

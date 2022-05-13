@@ -377,74 +377,6 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
     }
 
     /**
-     * @notice Transfer `tokens` tokens from `src` to `dst` by `spender`
-     * @dev Called by both `transfer` and `transferFrom` internally
-     * @param spender The address of the account performing the transfer
-     * @param src The address of the source account
-     * @param dst The address of the destination account
-     * @param tokens The number of tokens to transfer
-     * @return Whether or not the transfer succeeded
-     */
-    function transferTokens(
-        address spender,
-        address src,
-        address dst,
-        uint256 tokens
-    ) internal returns (uint256) {
-        /**
-         * For every user, accountTokens must be greater than or equal to accountCollateralTokens.
-         * The buffer between the two values will be transferred first.
-         * bufferTokens = accountTokens[src] - accountCollateralTokens[src]
-         * collateralTokens = tokens - bufferTokens
-         */
-        uint256 bufferTokens = sub_(accountTokens[src], accountCollateralTokens[src]);
-        uint256 collateralTokens = 0;
-        if (tokens > bufferTokens) {
-            collateralTokens = tokens - bufferTokens;
-        }
-
-        /**
-         * Since bufferTokens are not collateralized and can be transferred freely, we only check with comptroller
-         * whether collateralized tokens can be transferred.
-         */
-        require(comptroller.transferAllowed(address(this), src, dst, collateralTokens) == 0, "rejected");
-
-        /* Do not allow self-transfers */
-        require(src != dst, "bad input");
-
-        /* Get the allowance, infinite for the account owner */
-        uint256 startingAllowance = 0;
-        if (spender == src) {
-            startingAllowance = uint256(-1);
-        } else {
-            startingAllowance = transferAllowances[src][spender];
-        }
-
-        /* Do the calculations, checking for {under,over}flow */
-        accountTokens[src] = sub_(accountTokens[src], tokens);
-        accountTokens[dst] = add_(accountTokens[dst], tokens);
-        if (collateralTokens > 0) {
-            accountCollateralTokens[src] = sub_(accountCollateralTokens[src], collateralTokens);
-            accountCollateralTokens[dst] = add_(accountCollateralTokens[dst], collateralTokens);
-
-            emit UserCollateralChanged(src, accountCollateralTokens[src]);
-            emit UserCollateralChanged(dst, accountCollateralTokens[dst]);
-        }
-
-        /* Eat some of the allowance (if necessary) */
-        if (startingAllowance != uint256(-1)) {
-            transferAllowances[src][spender] = sub_(startingAllowance, tokens);
-        }
-
-        /* We emit a Transfer event */
-        emit Transfer(src, dst, tokens);
-
-        comptroller.transferVerify(address(this), src, dst, tokens);
-
-        return uint256(Error.NO_ERROR);
-    }
-
-    /**
      * @notice Get the account's cToken collateral balances
      * @param account The address of the account
      */
@@ -576,9 +508,8 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
             increaseUserCollateralInternal(minter, vars.mintTokens);
         }
 
-        /* We emit a Mint event, and a Transfer event */
+        /* We emit a Mint event */
         emit Mint(payer, minter, vars.actualMintAmount, vars.mintTokens);
-        emit Transfer(address(this), minter, vars.mintTokens);
 
         /* We call the defense hook */
         comptroller.mintVerify(address(this), payer, minter, vars.actualMintAmount, vars.mintTokens);
@@ -679,8 +610,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
          */
         doTransferOut(redeemer, vars.redeemAmount, isNative);
 
-        /* We emit a Transfer event, and a Redeem event */
-        emit Transfer(redeemer, address(this), vars.redeemTokens);
+        /* We emit a Redeem event */
         emit Redeem(redeemer, vars.redeemAmount, vars.redeemTokens);
 
         /* We call the defense hook */
@@ -743,9 +673,7 @@ contract CCollateralCapErc20 is CToken, CCollateralCapErc20Interface {
         accountCollateralTokens[liquidator] = add_(accountCollateralTokens[liquidator], bonusTokens);
         accountCollateralTokens[admin] = add_(accountCollateralTokens[admin], feeTokens);
 
-        /* Emit a Transfer, UserCollateralChanged events */
-        emit Transfer(borrower, liquidator, bonusTokens);
-        emit Transfer(borrower, admin, feeTokens);
+        /* Emit UserCollateralChanged events */
         emit UserCollateralChanged(borrower, accountCollateralTokens[borrower]);
         emit UserCollateralChanged(liquidator, accountCollateralTokens[liquidator]);
 

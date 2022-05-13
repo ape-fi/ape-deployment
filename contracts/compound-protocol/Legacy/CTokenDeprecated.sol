@@ -59,115 +59,6 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
     }
 
     /**
-     * @notice Transfer `tokens` tokens from `src` to `dst` by `spender`
-     * @dev Called by both `transfer` and `transferFrom` internally
-     * @param spender The address of the account performing the transfer
-     * @param src The address of the source account
-     * @param dst The address of the destination account
-     * @param tokens The number of tokens to transfer
-     * @return Whether or not the transfer succeeded
-     */
-    function transferTokens(
-        address spender,
-        address src,
-        address dst,
-        uint256 tokens
-    ) internal returns (uint256) {
-        /* Fail if transfer not allowed */
-        uint256 allowed = comptroller.transferAllowed(address(this), src, dst, tokens);
-        if (allowed != 0) {
-            return failOpaque(Error.COMPTROLLER_REJECTION, FailureInfo.TRANSFER_COMPTROLLER_REJECTION, allowed);
-        }
-
-        /* Do not allow self-transfers */
-        if (src == dst) {
-            return fail(Error.BAD_INPUT, FailureInfo.TRANSFER_NOT_ALLOWED);
-        }
-
-        /* Get the allowance, infinite for the account owner */
-        uint256 startingAllowance = 0;
-        if (spender == src) {
-            startingAllowance = uint256(-1);
-        } else {
-            startingAllowance = transferAllowances[src][spender];
-        }
-
-        /* Do the calculations, checking for {under,over}flow */
-        uint256 allowanceNew = sub_(startingAllowance, tokens);
-        uint256 srcTokensNew = sub_(accountTokens[src], tokens);
-        uint256 dstTokensNew = add_(accountTokens[dst], tokens);
-
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        accountTokens[src] = srcTokensNew;
-        accountTokens[dst] = dstTokensNew;
-
-        /* Eat some of the allowance (if necessary) */
-        if (startingAllowance != uint256(-1)) {
-            transferAllowances[src][spender] = allowanceNew;
-        }
-
-        /* We emit a Transfer event */
-        emit Transfer(src, dst, tokens);
-
-        comptroller.transferVerify(address(this), src, dst, tokens);
-
-        return uint256(Error.NO_ERROR);
-    }
-
-    /**
-     * @notice Transfer `amount` tokens from `msg.sender` to `dst`
-     * @param dst The address of the destination account
-     * @param amount The number of tokens to transfer
-     * @return Whether or not the transfer succeeded
-     */
-    function transfer(address dst, uint256 amount) external nonReentrant returns (bool) {
-        return transferTokens(msg.sender, msg.sender, dst, amount) == uint256(Error.NO_ERROR);
-    }
-
-    /**
-     * @notice Transfer `amount` tokens from `src` to `dst`
-     * @param src The address of the source account
-     * @param dst The address of the destination account
-     * @param amount The number of tokens to transfer
-     * @return Whether or not the transfer succeeded
-     */
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 amount
-    ) external nonReentrant returns (bool) {
-        return transferTokens(msg.sender, src, dst, amount) == uint256(Error.NO_ERROR);
-    }
-
-    /**
-     * @notice Approve `spender` to transfer up to `amount` from `src`
-     * @dev This will overwrite the approval amount for `spender`
-     *  and is subject to issues noted [here](https://eips.ethereum.org/EIPS/eip-20#approve)
-     * @param spender The address of the account which may transfer tokens
-     * @param amount The number of tokens that are approved (-1 means infinite)
-     * @return Whether or not the approval succeeded
-     */
-    function approve(address spender, uint256 amount) external returns (bool) {
-        address src = msg.sender;
-        transferAllowances[src][spender] = amount;
-        emit Approval(src, spender, amount);
-        return true;
-    }
-
-    /**
-     * @notice Get the current allowance from `owner` for `spender`
-     * @param owner The address of the account which owns the tokens to be spent
-     * @param spender The address of the account which may transfer tokens
-     * @return The number of tokens allowed to be spent (-1 means infinite)
-     */
-    function allowance(address owner, address spender) external view returns (uint256) {
-        return transferAllowances[owner][spender];
-    }
-
-    /**
      * @notice Get the token balance of the `owner`
      * @param owner The address of the account to query
      * @return The number of tokens owned by `owner`
@@ -482,9 +373,8 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
         totalSupply = vars.totalSupplyNew;
         accountTokens[minter] = vars.accountTokensNew;
 
-        /* We emit a Mint event, and a Transfer event */
+        /* We emit a Mint event */
         emit Mint(minter, minter, vars.actualMintAmount, vars.mintTokens);
-        emit Transfer(address(this), minter, vars.mintTokens);
 
         /* We call the defense hook */
         comptroller.mintVerify(address(this), minter, minter, vars.actualMintAmount, vars.mintTokens);
@@ -598,8 +488,7 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
         totalSupply = vars.totalSupplyNew;
         accountTokens[redeemer] = vars.accountTokensNew;
 
-        /* We emit a Transfer event, and a Redeem event */
-        emit Transfer(redeemer, address(this), vars.redeemTokens);
+        /* We emit a Redeem event */
         emit Redeem(redeemer, vars.redeemAmount, vars.redeemTokens);
 
         /* We call the defense hook */
@@ -988,10 +877,6 @@ contract CTokenDeprecated is CTokenInterface, Exponential, TokenErrorReporter {
         accountTokens[borrower] = borrowerTokensNew;
         accountTokens[liquidator] = liquidatorTokensNew;
         accountTokens[admin] = adminTokensNew;
-
-        /* Emit a Transfer event */
-        emit Transfer(borrower, liquidator, bonusTokens);
-        emit Transfer(borrower, admin, feeTokens);
 
         /* We call the defense hook */
         comptroller.seizeVerify(address(this), seizerToken, liquidator, borrower, seizeTokens);

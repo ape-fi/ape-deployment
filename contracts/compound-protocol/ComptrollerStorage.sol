@@ -73,7 +73,6 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
     address public pauseGuardian;
     bool public _mintGuardianPaused;
     bool public _borrowGuardianPaused;
-    bool public transferGuardianPaused;
     bool public seizeGuardianPaused;
     mapping(address => bool) public mintGuardianPaused;
     mapping(address => bool) public borrowGuardianPaused;

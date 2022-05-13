@@ -606,57 +606,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /**
      * @notice Checks if the account should be allowed to transfer tokens in the given market
      * @param cToken The market to verify the transfer against
-     * @param src The account which sources the tokens
-     * @param dst The account which receives the tokens
-     * @param transferTokens The number of cTokens to transfer
-     * @return 0 if the transfer is allowed, otherwise a semi-opaque error code (See ErrorReporter.sol)
-     */
-    function transferAllowed(
-        address cToken,
-        address src,
-        address dst,
-        uint256 transferTokens
-    ) external returns (uint256) {
-        // Pausing is a very serious situation - we revert to sound the alarms
-        require(!transferGuardianPaused, "transfer is paused");
-        require(!isCreditAccount(dst, cToken), "cannot transfer to a credit account");
-
-        // Shh - currently unused
-        dst;
-
-        // Currently the only consideration is whether or not
-        //  the src is allowed to redeem this many tokens
-        return redeemAllowedInternal(cToken, src, transferTokens);
-    }
-
-    /**
-     * @notice Validates transfer and reverts on rejection. May emit logs.
-     * @param cToken Asset being transferred
-     * @param src The account which sources the tokens
-     * @param dst The account which receives the tokens
-     * @param transferTokens The number of cTokens to transfer
-     */
-    function transferVerify(
-        address cToken,
-        address src,
-        address dst,
-        uint256 transferTokens
-    ) external {
-        // Shh - currently unused
-        cToken;
-        src;
-        dst;
-        transferTokens;
-
-        // Shh - we don't ever want this hook to be marked pure
-        if (false) {
-            closeFactorMantissa = closeFactorMantissa;
-        }
-    }
-
-    /**
-     * @notice Checks if the account should be allowed to transfer tokens in the given market
-     * @param cToken The market to verify the transfer against
      * @param receiver The account which receives the tokens
      * @param amount The amount of the tokens
      * @param params The other parameters
@@ -1201,15 +1150,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
 
         flashloanGuardianPaused[address(cToken)] = state;
         emit ActionPaused(cToken, "Flashloan", state);
-        return state;
-    }
-
-    function _setTransferPaused(bool state) public returns (bool) {
-        require(msg.sender == pauseGuardian || msg.sender == admin, "guardian or admin only");
-        require(msg.sender == admin || state == true, "admin only");
-
-        transferGuardianPaused = state;
-        emit ActionPaused("Transfer", state);
         return state;
     }
 

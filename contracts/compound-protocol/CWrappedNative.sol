@@ -440,52 +440,6 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
     }
 
     /**
-     * @notice Transfer `tokens` tokens from `src` to `dst` by `spender`
-     * @dev Called by both `transfer` and `transferFrom` internally
-     * @param spender The address of the account performing the transfer
-     * @param src The address of the source account
-     * @param dst The address of the destination account
-     * @param tokens The number of tokens to transfer
-     * @return Whether or not the transfer succeeded
-     */
-    function transferTokens(
-        address spender,
-        address src,
-        address dst,
-        uint256 tokens
-    ) internal returns (uint256) {
-        /* Fail if transfer not allowed */
-        require(comptroller.transferAllowed(address(this), src, dst, tokens) == 0, "rejected");
-
-        /* Do not allow self-transfers */
-        require(src != dst, "bad input");
-
-        /* Get the allowance, infinite for the account owner */
-        uint256 startingAllowance = 0;
-        if (spender == src) {
-            startingAllowance = uint256(-1);
-        } else {
-            startingAllowance = transferAllowances[src][spender];
-        }
-
-        /* Do the calculations, checking for {under,over}flow */
-        accountTokens[src] = sub_(accountTokens[src], tokens);
-        accountTokens[dst] = add_(accountTokens[dst], tokens);
-
-        /* Eat some of the allowance (if necessary) */
-        if (startingAllowance != uint256(-1)) {
-            transferAllowances[src][spender] = sub_(startingAllowance, tokens);
-        }
-
-        /* We emit a Transfer event */
-        emit Transfer(src, dst, tokens);
-
-        comptroller.transferVerify(address(this), src, dst, tokens);
-
-        return uint256(Error.NO_ERROR);
-    }
-
-    /**
      * @notice Get the account's cToken balances
      * @param account The address of the account
      */
@@ -560,9 +514,8 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         totalSupply = add_(totalSupply, vars.mintTokens);
         accountTokens[minter] = add_(accountTokens[minter], vars.mintTokens);
 
-        /* We emit a Mint event, and a Transfer event */
+        /* We emit a Mint event */
         emit Mint(payer, minter, vars.actualMintAmount, vars.mintTokens);
-        emit Transfer(address(this), minter, vars.mintTokens);
 
         /* We call the defense hook */
         comptroller.mintVerify(address(this), payer, minter, vars.actualMintAmount, vars.mintTokens);
@@ -660,8 +613,7 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
          */
         doTransferOut(redeemer, vars.redeemAmount, isNative);
 
-        /* We emit a Transfer event, and a Redeem event */
-        emit Transfer(redeemer, address(this), vars.redeemTokens);
+        /* We emit a Redeem event */
         emit Redeem(redeemer, vars.redeemAmount, vars.redeemTokens);
 
         /* We call the defense hook */
@@ -717,10 +669,6 @@ contract CWrappedNative is CToken, CWrappedNativeInterface {
         accountTokens[borrower] = sub_(accountTokens[borrower], seizeTokens);
         accountTokens[liquidator] = add_(accountTokens[liquidator], bonusTokens);
         accountTokens[admin] = add_(accountTokens[admin], feeTokens);
-
-        /* Emit a Transfer event */
-        emit Transfer(borrower, liquidator, bonusTokens);
-        emit Transfer(borrower, admin, feeTokens);
 
         /* We call the defense hook */
         comptroller.seizeVerify(address(this), seizerToken, liquidator, borrower, seizeTokens);

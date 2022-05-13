@@ -103,20 +103,6 @@ contract ComptrollerInterface {
         uint256 seizeTokens
     ) external;
 
-    function transferAllowed(
-        address cToken,
-        address src,
-        address dst,
-        uint256 transferTokens
-    ) external returns (uint256);
-
-    function transferVerify(
-        address cToken,
-        address src,
-        address dst,
-        uint256 transferTokens
-    ) external;
-
     /*** Liquidity/Liquidation Calculations ***/
 
     function liquidateCalculateSeizeTokens(

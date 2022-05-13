@@ -38,7 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 
   // set apApeUSD address in apeUSD
-  await execute('ApeUSD', { from: deployer}, 'setIB', apApeUSD.address);
+  await execute('ApeUSD', { from: deployer}, 'setApefi', apApeUSD.address);
 
   // support market
   await execute('Comptroller', { from: deployer }, '_supportMarket', apApeUSD.address);

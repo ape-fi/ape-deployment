@@ -108,11 +108,6 @@ contract CTokenStorage {
     mapping(address => uint256) internal accountTokens;
 
     /**
-     * @notice Approved token transfer amounts on behalf of others
-     */
-    mapping(address => mapping(address => uint256)) internal transferAllowances;
-
-    /**
      * @notice Container for borrow balance information
      * @member principal Total balance (with accrued interest), after applying the most recent balance-changing action
      * @member interestIndex Global borrowIndex as of the most recent balance-changing action
@@ -265,16 +260,6 @@ contract CTokenInterface is CTokenStorage {
     event ReservesReduced(address admin, uint256 reduceAmount, uint256 newTotalReserves);
 
     /**
-     * @notice EIP20 Transfer event
-     */
-    event Transfer(address indexed from, address indexed to, uint256 amount);
-
-    /**
-     * @notice EIP20 Approval event
-     */
-    event Approval(address indexed owner, address indexed spender, uint256 amount);
-
-    /**
      * @notice Failure event
      */
     event Failure(uint256 error, uint256 info, uint256 detail);
@@ -290,18 +275,6 @@ contract CTokenInterface is CTokenStorage {
     event HelperSet(address oldHelper, address newHelper);
 
     /*** User Interface ***/
-
-    function transfer(address dst, uint256 amount) external returns (bool);
-
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 amount
-    ) external returns (bool);
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function allowance(address owner, address spender) external view returns (uint256);
 
     function balanceOf(address owner) external view returns (uint256);
 

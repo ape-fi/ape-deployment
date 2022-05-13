@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.6;
 
-interface ibToken {
+interface IApeFinance {
     function mint(address minter, uint256 mintAmount)
         external
         returns (uint256);
@@ -14,12 +14,12 @@ interface ibToken {
     function balanceOf(address) external view returns (uint);
 }
 
-contract FixedForex {
+contract ApeUSD {
     string public constant name = "apeUSD";
     string public constant symbol = "apeUSD";
     uint8 public constant decimals = 18;
 
-    ibToken public ib;
+    IApeFinance public apefi;
     address public gov;
     address public nextgov;
     uint public commitgov;
@@ -36,9 +36,9 @@ contract FixedForex {
         _;
     }
 
-    function setIB(address _ib) external g {
-        require(address(ib) == address(0), 'ib address already set');
-        ib = ibToken(_ib);
+    function setApefi(address _apefi) external g {
+        require(address(apefi) == address(0), 'apefi address already set');
+        apefi = IApeFinance(_apefi);
     }
 
     function setGov(address _gov) external g {
@@ -51,20 +51,20 @@ contract FixedForex {
         gov = nextgov;
     }
 
-    function balanceIB() public view returns (uint) {
-        return ib.balanceOf(address(this));
+    function balanceApeFi() public view returns (uint) {
+        return apefi.balanceOf(address(this));
     }
 
     function balanceUnderlying() public view returns (uint) {
-        uint256 _b = balanceIB();
+        uint256 _b = balanceApeFi();
         if (_b > 0) {
-            return _b * ib.exchangeRateStored() / 1e18;
+            return _b * apefi.exchangeRateStored() / 1e18;
         }
         return 0;
     }
 
     function _redeem(uint amount) internal {
-        require(ib.redeem(payable(address(this)), 0, amount) == 0, "ib: withdraw failed");
+        require(apefi.redeem(payable(address(this)), 0, amount) == 0, "apefi: withdraw failed");
     }
 
     function profit() external {
@@ -81,9 +81,9 @@ contract FixedForex {
 
     function deposit() external {
         uint _amount = balances[address(this)];
-        allowances[address(this)][address(ib)] = _amount;
+        allowances[address(this)][address(apefi)] = _amount;
         liquidity += _amount;
-        require(ib.mint(address(this), _amount) == 0, "ib: supply failed");
+        require(apefi.mint(address(this), _amount) == 0, "apefi: supply failed");
     }
 
     /// @notice Total number of tokens in circulation
