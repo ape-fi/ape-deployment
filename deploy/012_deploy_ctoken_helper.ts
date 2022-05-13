@@ -7,8 +7,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const {deployer} = await getNamedAccounts();
 
+  const comptrollerAddress = (await get('Comptroller')).address;
+
   const cTokenHelper = await deploy('CTokenHelper', {
     from: deployer,
+    args: [comptrollerAddress],
     log: true,
   });
 
