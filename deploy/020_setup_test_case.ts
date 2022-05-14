@@ -3,7 +3,7 @@ import {DeployFunction} from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, ethers, getNamedAccounts } = hre;
-  const { execute, get, read } = deployments;
+  const { execute, get, deploy } = deployments;
   const { parseUnits, formatEther } = ethers.utils;
 
   const network = hre.network as any;
@@ -13,6 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { admin, deployer, user1, user2 } = await getNamedAccounts();
 
+  const apeUSDAddress = (await get('ApeUSD')).address;
   const apeAPEAddress = (await get('apeAPE')).address;
   const apeApeUSDAddress = (await get('apeApeUSD')).address;
   const cTokenHelper = (await get('CTokenHelper')).address;
@@ -35,15 +36,29 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log('user:', user2, 'has deposit', formatEther(apeAmount2), 'APE');
 
-  const stakingRewardAddress = (await get('StakingRewards')).address;
+  const stakingRewardHelper = (await get('StakingRewardsHelper')).address;
+  const stakingReward = await deploy('StakingRewards', {
+    from: deployer,
+    contract: 'MockStakingRewards',
+    args: [apeUSDAddress, stakingRewardHelper],
+    log: true
+  });
 
+  const apefi = await deploy('APEFI', {
+    from: deployer,
+    contract: 'MockToken',
+    args: ['Ape Finance', 'APEFI'],
+    log: true
+  });
   const rewardAmount = parseUnits('300000', 18);
-  await execute('APEFI', { from: deployer }, 'transfer', stakingRewardAddress, rewardAmount);
-  await execute('StakingRewards', { from: admin }, 'notifyRewardAmount', rewardAmount);
+  await execute('APEFI', { from: deployer }, 'transfer', stakingReward.address, rewardAmount);
+  const sevenDays = 60 * 60 * 24 * 7;
+  await execute('StakingRewards', { from: deployer}, 'addRewardsToken', apefi.address, sevenDays);
+  await execute('StakingRewards', { from: deployer }, 'notifyRewardAmount', apefi.address, rewardAmount);
 
   // user 1 stake apeUSD and farm APEFI
   const stakeAmount = parseUnits('30000', 18);
-  await execute('ApeUSD', { from: user1 }, 'approve', stakingRewardAddress, stakeAmount);
+  await execute('ApeUSD', { from: user1 }, 'approve', stakingReward.address, stakeAmount);
   await execute('StakingRewards', { from: user1 }, 'stake', stakeAmount);
 
   // test withdraw & burn

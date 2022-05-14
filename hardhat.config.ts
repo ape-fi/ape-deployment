@@ -18,7 +18,12 @@ const config: any = {
         }
       },
       {
-        version: '0.8.11'
+        version: '0.8.11',
+        settings: {
+          optimizer: {
+            enabled: true
+          }
+        }
       }
     ]
   },
