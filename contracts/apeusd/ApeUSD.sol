@@ -15,8 +15,8 @@ interface IApeFinance {
 }
 
 contract ApeUSD {
-    string public constant name = "apeUSD";
-    string public constant symbol = "apeUSD";
+    string public constant name = "ApeUSD";
+    string public constant symbol = "ApeUSD";
     uint8 public constant decimals = 18;
 
     IApeFinance public apefi;

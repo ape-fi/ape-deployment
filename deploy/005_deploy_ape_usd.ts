@@ -6,7 +6,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy, execute } = deployments;
   const { parseUnits } = ethers.utils;
 
-  const { admin, deployer } = await getNamedAccounts();
+  const { deployer } = await getNamedAccounts();
 
   await deploy('ApeUSD', {
     from: deployer,

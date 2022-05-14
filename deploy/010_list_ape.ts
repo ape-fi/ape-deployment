@@ -21,8 +21,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { apeCoin } = await getNamedAccounts();
     apeCoinAddress = apeCoin;
   } else {
-    const mockToken = await deploy('MockToken', {
+    const mockToken = await deploy('APE', {
       from: deployer,
+      contract: 'MockToken',
+      args: ['ApeCoin', 'APE'],
       log: true
     });
     apeCoinAddress = mockToken.address;
@@ -30,7 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const initialExchangeRate = parseUnits(exchangeRate, 18 + 18 - 8);
 
-  const apAPE = await deploy('apAPE', {
+  const apeAPE = await deploy('apeAPE', {
     from: deployer,
     contract: 'CErc20Delegator',
     args: [
@@ -39,7 +41,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       irmAddress,
       initialExchangeRate,
       'Ape ApeCoin',
-      'apAPE',
+      'apeAPE',
       8,
       cTokenAdminAddress,
       cTokenImplementationAddress,
@@ -69,9 +71,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   // support market
-  await execute('Comptroller', { from: deployer }, '_supportMarket', apAPE.address);
-  await execute('Comptroller', { from: deployer }, '_setCollateralFactor', apAPE.address, parseUnits('0.7'));
-  await execute('Comptroller', { from: deployer }, '_setBorrowPaused', apAPE.address, true);
+  await execute('Comptroller', { from: deployer }, '_supportMarket', apeAPE.address);
+  await execute('Comptroller', { from: deployer }, '_setCollateralFactor', apeAPE.address, parseUnits('0.7'));
+  await execute('Comptroller', { from: deployer }, '_setBorrowPaused', apeAPE.address, true);
 };
 export default func;
 func.tags = ['ListAPE'];

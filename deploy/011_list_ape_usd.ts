@@ -19,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const initialExchangeRate = parseUnits(exchangeRate, 18 + 18 - 8);
 
-  const apApeUSD = await deploy('apApeUSD', {
+  const apeApeUSD = await deploy('apeApeUSD', {
     from: deployer,
     contract: 'CErc20Delegator',
     args: [
@@ -27,8 +27,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       unitrollerAddress,
       irmAddress,
       initialExchangeRate,
-      'Ape apeUSD',
-      'apApeUSD',
+      'Ape ApeUSD',
+      'apeApeUSD',
       8,
       cTokenAdminAddress,
       cTokenImplementationAddress,
@@ -37,24 +37,24 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true
   });
 
-  // set apApeUSD address in apeUSD
-  await execute('ApeUSD', { from: deployer}, 'setApefi', apApeUSD.address);
+  // set apeApeUSD address in apeUSD
+  await execute('ApeUSD', { from: deployer}, 'setApefi', apeApeUSD.address);
 
   // support market
-  await execute('Comptroller', { from: deployer }, '_supportMarket', apApeUSD.address);
+  await execute('Comptroller', { from: deployer }, '_supportMarket', apeApeUSD.address);
 
   // supply apeUSD into Ape Finance
   await execute('ApeUSD', { from: deployer }, 'deposit');
 
   // pause supply
-  await execute('Comptroller', { from: deployer }, '_setMintPaused', apApeUSD.address, true);
+  await execute('Comptroller', { from: deployer }, '_setMintPaused', apeApeUSD.address, true);
 
   // set borrow fee
-  await execute('CTokenAdmin', { from: deployer }, '_setBorrowFee', apApeUSD.address, parseUnits('0.005', 18)); // 0.5%
+  await execute('CTokenAdmin', { from: deployer }, '_setBorrowFee', apeApeUSD.address, parseUnits('0.005', 18)); // 0.5%
 
   // set borrow cap
   const borrowCap = parseUnits('10000000', 18); // $10M
-  await execute('Comptroller', { from: deployer }, '_setMarketBorrowCaps', [apApeUSD.address], [borrowCap]);
+  await execute('Comptroller', { from: deployer }, '_setMarketBorrowCaps', [apeApeUSD.address], [borrowCap]);
 };
 export default func;
 func.tags = ['ListAPE'];
