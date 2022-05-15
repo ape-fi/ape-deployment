@@ -10,8 +10,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const unitrollerAddress = (await get('Unitroller')).address;
   const irmAddress = (await get('StableIRM')).address;
-  const cTokenAdminAddress = (await get('CTokenAdmin')).address;
-  const cTokenImplementationAddress = (await get('CCollateralCapErc20Delegate')).address;
+  const apeTokenAdminAddress = (await get('ApeTokenAdmin')).address;
+  const apeTokenImplementationAddress = (await get('ApeCollateralCapErc20Delegate')).address;
   const exchangeRate = '0.01';
 
 
@@ -34,7 +34,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const apeAPE = await deploy('apeAPE', {
     from: deployer,
-    contract: 'CErc20Delegator',
+    contract: 'ApeErc20Delegator',
     args: [
       apeCoinAddress,
       unitrollerAddress,
@@ -43,8 +43,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       'Ape ApeCoin',
       'apeAPE',
       8,
-      cTokenAdminAddress,
-      cTokenImplementationAddress,
+      apeTokenAdminAddress,
+      apeTokenImplementationAddress,
       '0x'
     ],
     log: true

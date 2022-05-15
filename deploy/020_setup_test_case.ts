@@ -16,15 +16,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const apeUSDAddress = (await get('ApeUSD')).address;
   const apeAPEAddress = (await get('apeAPE')).address;
   const apeApeUSDAddress = (await get('apeApeUSD')).address;
-  const cTokenHelper = (await get('CTokenHelper')).address;
+  const apeTokenHelper = (await get('ApeTokenHelper')).address;
 
   // test env only
   const apeAmount1 = parseUnits('4000', 18);
   const borrowAmount = parseUnits('38400', 18);
 
   await execute('APE', { from: deployer }, 'transfer', user1, apeAmount1);
-  await execute('APE', { from: user1 }, 'approve', cTokenHelper, apeAmount1);
-  await execute('CTokenHelper', { from: user1 }, 'mintBorrow', apeAPEAddress, apeAmount1, apeApeUSDAddress, borrowAmount);
+  await execute('APE', { from: user1 }, 'approve', apeTokenHelper, apeAmount1);
+  await execute('ApeTokenHelper', { from: user1 }, 'mintBorrow', apeAPEAddress, apeAmount1, apeApeUSDAddress, borrowAmount);
 
   console.log('user:', user1, 'has borrow', formatEther(borrowAmount), 'apeUSD');
 

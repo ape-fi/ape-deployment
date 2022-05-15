@@ -10,8 +10,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const unitrollerAddress = (await get('Unitroller')).address;
   const irmAddress = (await get('StableIRM')).address;
-  const cTokenAdminAddress = (await get('CTokenAdmin')).address;
-  const cTokenImplementationAddress = (await get('CErc20Delegate')).address;
+  const apeTokenAdminAddress = (await get('ApeTokenAdmin')).address;
+  const apeTokenImplementationAddress = (await get('ApeErc20Delegate')).address;
   const exchangeRate = '0.01';
 
 
@@ -21,7 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const apeApeUSD = await deploy('apeApeUSD', {
     from: deployer,
-    contract: 'CErc20Delegator',
+    contract: 'ApeErc20Delegator',
     args: [
       apeUSDAddress,
       unitrollerAddress,
@@ -30,8 +30,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       'Ape ApeUSD',
       'apeApeUSD',
       8,
-      cTokenAdminAddress,
-      cTokenImplementationAddress,
+      apeTokenAdminAddress,
+      apeTokenImplementationAddress,
       '0x'
     ],
     log: true
@@ -50,7 +50,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await execute('Comptroller', { from: deployer }, '_setMintPaused', apeApeUSD.address, true);
 
   // set borrow fee
-  await execute('CTokenAdmin', { from: deployer }, '_setBorrowFee', apeApeUSD.address, parseUnits('0.005', 18)); // 0.5%
+  await execute('ApeTokenAdmin', { from: deployer }, '_setBorrowFee', apeApeUSD.address, parseUnits('0.005', 18)); // 0.5%
 
   // set borrow cap
   const borrowCap = parseUnits('10000000', 18); // $10M
