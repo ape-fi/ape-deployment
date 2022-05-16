@@ -33,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const apeAmount2 = parseUnits('3321.19', 18);
   await execute('ApeUSD', { from: user1 }, 'transfer', user2, parseUnits('230.10', 18));
   await execute('APE', { from: deployer }, 'transfer', user2, apeAmount2);
-  await execute('APE', { from: user2 }, 'approve', apeAPEAddress, apeAmount2);
+  await execute('APE', { from: user2 }, 'approve', apeTokenHelper, apeAmount2);
   await execute('ApeTokenHelper', { from: user2 }, 'mintBorrow', apeAPEAddress, apeAmount2, apeApeUSDAddress, borrowAmount2);
 
   console.log('user:', user2, 'has deposit', formatEther(apeAmount2), 'APE');
