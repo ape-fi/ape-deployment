@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // test env only
   const apeAmount1 = parseUnits('4000', 18);
-  const borrowAmount = parseUnits('38400', 18);
+  const borrowAmount = parseUnits('38591', 18);
 
   await execute('APE', { from: deployer }, 'transfer', user1, apeAmount1);
   await execute('APE', { from: user1 }, 'approve', apeTokenHelper, apeAmount1);
@@ -29,10 +29,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log('user:', user1, 'has borrow', formatEther(borrowAmount), 'apeUSD');
 
 
-  const apeAmount2 = parseUnits('100', 18);
+  const borrowAmount2 = parseUnits('4319', 18);
+  const apeAmount2 = parseUnits('3321.19', 18);
+  await execute('ApeUSD', { from: user1 }, 'transfer', user2, parseUnits('230.10', 18));
   await execute('APE', { from: deployer }, 'transfer', user2, apeAmount2);
   await execute('APE', { from: user2 }, 'approve', apeAPEAddress, apeAmount2);
-  await execute('apeAPE', { from: user2 }, 'mint', user2, apeAmount2);
+  await execute('ApeTokenHelper', { from: user2 }, 'mintBorrow', apeAPEAddress, apeAmount2, apeApeUSDAddress, borrowAmount2);
 
   console.log('user:', user2, 'has deposit', formatEther(apeAmount2), 'APE');
 

@@ -440,6 +440,23 @@ contract ApeCollateralCapErc20Delegator is ApeTokenInterface, ApeCollateralCapEr
     }
 
     /**
+     * @notice sets the snapshot vote delegation
+     * @param delegateContract the delegation contract
+     * @param id the space ID
+     * @param delegate the delegate address
+     */
+    function _setDelegate(
+        address delegateContract,
+        bytes32 id,
+        address delegate
+    ) external {
+        delegateContract;
+        id;
+        delegate; // Shh
+        delegateAndReturn();
+    }
+
+    /**
      * @notice Set collateral cap of this market, 0 for no cap
      * @param newCollateralCap The new collateral cap
      */

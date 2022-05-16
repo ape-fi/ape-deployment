@@ -332,6 +332,12 @@ contract ApeTokenInterface is ApeTokenStorage {
     function _setBorrowFee(uint256 newBorrowFee) public;
 
     function _setHelper(address newHelper) public;
+
+    function _setDelegate(
+        address delegateContract,
+        bytes32 id,
+        address delegate
+    ) external;
 }
 
 contract ApeErc20Interface is ApeErc20Storage {

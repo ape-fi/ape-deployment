@@ -199,6 +199,22 @@ contract ApeTokenAdmin is Exponential {
     }
 
     /**
+     * @notice sets apeToken snapshot vote delegation
+     * @param apeToken The apeToken address
+     * @param delegateContract the delegation contract
+     * @param id the space ID
+     * @param delegate the delegate address
+     */
+    function _setDelegate(
+        address apeToken,
+        address delegateContract,
+        bytes32 id,
+        address delegate
+    ) external onlyAdmin {
+        ApeTokenInterface(apeToken)._setDelegate(delegateContract, id, delegate);
+    }
+
+    /**
      * @notice Set apeToken collateral cap
      * @dev It will revert if the apeToken is not CCollateralCap.
      * @param apeToken The apeToken address

@@ -1157,6 +1157,22 @@ contract ApeTokenDeprecated is ApeTokenInterface, Exponential, TokenErrorReporte
     }
 
     /**
+     * @notice sets the snapshot vote delegation
+     * @param delegateContract the delegation contract
+     * @param id the space ID
+     * @param delegate the delegate address
+     */
+    function _setDelegate(
+        address delegateContract,
+        bytes32 id,
+        address delegate
+    ) external {
+        delegateContract;
+        id;
+        delegate; // Shh
+    }
+
+    /**
      * @notice updates the interest rate model (*requires fresh interest accrual)
      * @dev Admin function to update the interest rate model
      * @param newInterestRateModel the new interest rate model to use

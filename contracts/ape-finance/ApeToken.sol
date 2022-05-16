@@ -7,6 +7,7 @@ import "./Exponential.sol";
 import "./EIP20Interface.sol";
 import "./EIP20NonStandardInterface.sol";
 import "./InterestRateModel.sol";
+import "./Governance/DelegationInterface.sol";
 
 /**
  * @title ApeFinance's ApeToken Contract
@@ -965,6 +966,22 @@ contract ApeToken is ApeTokenInterface, Exponential, TokenErrorReporter {
         helper = newHelper;
 
         emit HelperSet(oldHelper, newHelper);
+    }
+
+    /**
+     * @notice sets the snapshot vote delegation
+     * @param delegateContract the delegation contract
+     * @param id the space ID
+     * @param delegate the delegate address
+     */
+    function _setDelegate(
+        address delegateContract,
+        bytes32 id,
+        address delegate
+    ) external {
+        require(msg.sender == admin, "admin only");
+
+        DelegationInterface(delegateContract).setDelegate(id, delegate);
     }
 
     /*** Safe Token ***/

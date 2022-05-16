@@ -506,6 +506,23 @@ contract ApeWrappedNativeDelegator is ApeTokenInterface, ApeWrappedNativeInterfa
     }
 
     /**
+     * @notice sets the snapshot vote delegation
+     * @param delegateContract the delegation contract
+     * @param id the space ID
+     * @param delegate the delegate address
+     */
+    function _setDelegate(
+        address delegateContract,
+        bytes32 id,
+        address delegate
+    ) external {
+        delegateContract;
+        id;
+        delegate; // Shh
+        delegateAndReturn();
+    }
+
+    /**
      * @notice Internal method to delegate execution to another contract
      * @dev It returns to the external caller whatever the implementation returns or forwards reverts
      * @param callee The contract to delegatecall
