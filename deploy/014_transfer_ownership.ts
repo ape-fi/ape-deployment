@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await execute('ApeTokenHelper', { from: deployer }, 'transferOwnership', admin);
     await execute('ApeUSD', { from: deployer }, 'setGov', admin);
     await execute('PriceOracleProxyUSD', {from: deployer}, '_setAdmin', admin);
-    await execute('StakingRewardFactory', { from: deployer }, 'transferOwnership', admin);
+    await execute('StakingRewardsFactory', { from: deployer }, 'transferOwnership', admin);
     await execute('StakingRewardsHelper', { from: deployer }, 'transferOwnership', admin);
   }
 };

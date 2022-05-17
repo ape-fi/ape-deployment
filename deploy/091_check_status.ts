@@ -35,3 +35,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log('liq threshold:', formatEther(apeCollateralFactor));
 }
 export default func;
+func.tags = ['CheckStatus'];

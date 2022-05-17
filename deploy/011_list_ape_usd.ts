@@ -55,6 +55,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // set borrow cap
   const borrowCap = parseUnits('10000000', 18); // $10M
   await execute('Comptroller', { from: deployer }, '_setMarketBorrowCaps', [apeApeUSD.address], [borrowCap]);
+
+  const network = hre.network as any;
+  if (network.config.forking || network.name == 'mainnet') {
+    await execute('Comptroller', { from: deployer }, '_setBorrowPaused', apeApeUSD.address, true);
+  }
 };
 export default func;
 func.tags = ['ListAPE'];
