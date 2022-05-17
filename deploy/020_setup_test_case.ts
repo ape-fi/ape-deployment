@@ -43,7 +43,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const mockLP = await deploy('MockCurveLP', {
     from: deployer,
-    args: ['Curve.fi Factory Plain Pool: ApeUSD-FRAX', 'ApeUSDFRAX-f']
+    args: ['Curve.fi Factory Plain Pool: ApeUSD-FRAX', 'ApeUSDFRAX-f'],
+    log: true
   });
 
   const stakingRewardHelper = (await get('StakingRewardsHelper')).address;
