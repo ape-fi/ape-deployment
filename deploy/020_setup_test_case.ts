@@ -3,7 +3,7 @@ import {DeployFunction} from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, ethers, getNamedAccounts } = hre;
-  const { execute, get, deploy } = deployments;
+  const { execute, deploy, get, getArtifact, read, save } = deployments;
   const { parseUnits, formatEther } = ethers.utils;
 
   const network = hre.network as any;
@@ -17,8 +17,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const apeAPEAddress = (await get('apeAPE')).address;
   const apeApeUSDAddress = (await get('apeApeUSD')).address;
   const apeTokenHelper = (await get('ApeTokenHelper')).address;
+  const stakingRewardsArtifact = await getArtifact('StakingRewards');
 
-  // test env only
+
   const apeAmount1 = parseUnits('4000', 18);
   const borrowAmount = parseUnits('38591', 18);
 
@@ -41,27 +42,47 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   console.log('user:', user2, 'has deposit', formatEther(apeAmount2), 'APE');
 
-  const mockLP = await deploy('MockCurveLP', {
-    from: deployer,
-    args: ['Curve.fi Factory Plain Pool: ApeUSD-FRAX', 'ApeUSDFRAX-f'],
-    log: true
-  });
-
-  const stakingRewardHelper = (await get('StakingRewardsHelper')).address;
-
-  const stakingReward = await deploy('StakingRewards', {
-    from: deployer,
-    contract: 'MockStakingRewards',
-    args: [mockLP.address, stakingRewardHelper],
-    log: true
-  });
-
   const apefi = await deploy('APEFI', {
     from: deployer,
     contract: 'MockToken',
     args: ['Ape Finance', 'APEFI'],
     log: true
   });
+
+  const mockCurveLP = await deploy('MockCurveLP', {
+    from: deployer,
+    args: ['Curve.fi Factory Plain Pool: ApeUSD-FRAX', 'ApeUSDFRAX-f'],
+    log: true
+  });
+
+  const mockUniLP = await deploy('MockUniLP', {
+    from: deployer,
+    args: ['Uniswap V2', 'UNI-V2', apeUSDAddress, apefi.address],
+    log: true
+  });
+
+  const stakingRewardHelper = (await get('StakingRewardsHelper')).address;
+
+  await execute('StakingRewardsFactory', {
+    from: deployer,
+    log: true
+  }, 'createStakingRewards', [mockCurveLP.address, mockUniLP.address], stakingRewardHelper);
+
+  const curveLPStakingAddress = await read('StakingRewardsFactory', 'getStakingRewards', mockCurveLP.address);
+  console.log('CurveLPStaking:', curveLPStakingAddress);
+
+  await save('CurveLPStaking', {
+    abi: stakingRewardsArtifact.abi,
+    address: curveLPStakingAddress
+  })
+
+  const uniLPStakingAddress = await read('StakingRewardsFactory', 'getStakingRewards', mockUniLP.address);
+  console.log('UniLPStaking:', uniLPStakingAddress);
+
+  await save('UniLPStaking', {
+    abi: stakingRewardsArtifact.abi,
+    address: uniLPStakingAddress
+  })
 
   const fxs = await deploy('FXS', {
     from: deployer,
@@ -70,24 +91,40 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true
   });
 
-  const apefiRewardAmount = parseUnits('63461538', 18);
-  await execute('APEFI', { from: deployer }, 'transfer', stakingReward.address, apefiRewardAmount);
-  const fxsRewardAmount = parseUnits('45788', 18);
-  await execute('FXS', { from: deployer }, 'transfer', stakingReward.address, fxsRewardAmount);
-  const twoWeeks = 60 * 60 * 24 * 14;
-  await execute('StakingRewards', { from: deployer}, 'addRewardsToken', apefi.address, twoWeeks);
-  await execute('StakingRewards', { from: deployer}, 'addRewardsToken', fxs.address, twoWeeks);
-  await execute('StakingRewards', { from: deployer }, 'notifyRewardAmount', apefi.address, apefiRewardAmount);
-  await execute('StakingRewards', { from: deployer }, 'notifyRewardAmount', fxs.address, fxsRewardAmount);
-
   // user 1 stake CurveLP and farm APEFI, FXS
   const stakeAmount = parseUnits('261321.4918101', 18);
   await execute('MockCurveLP', { from: deployer }, 'transfer', user1, stakeAmount);
-  await execute('MockCurveLP', { from: user1 }, 'approve', stakingReward.address, stakeAmount);
-  await execute('StakingRewards', { from: user1 }, 'stake', stakeAmount);
+  await execute('MockCurveLP', { from: user1 }, 'approve', curveLPStakingAddress, stakeAmount);
+  await execute('CurveLPStaking', { from: user1 }, 'stake', stakeAmount);
+  await execute('MockUniLP', { from: deployer }, 'transfer', user1, parseUnits('1615.34911', 18))
+  await execute('MockUniLP', { from: user1 }, 'approve', uniLPStakingAddress, parseUnits('1015.2', 18))
+  await execute('UniLPStaking', { from: user1 }, 'stake', parseUnits('1015.2', 18))
 
   // user 2 hasn't stake
   await execute('MockCurveLP', { from: deployer }, 'transfer', user2, parseUnits('14791.391091'));
+  await execute('MockUniLP', { from: deployer }, 'transfer', user2, parseUnits('773.1390919', 18))
+
+  const apefiRewardAmount = parseUnits('47000000', 18);
+  await execute('APEFI', { from: deployer }, 'transfer', curveLPStakingAddress, apefiRewardAmount);
+  const fxsRewardAmount = parseUnits('45788', 18);
+  await execute('FXS', { from: deployer }, 'transfer', curveLPStakingAddress, fxsRewardAmount);
+  const oneWeek = 60 * 60 * 24 * 7;
+  await execute('CurveLPStaking', { from: deployer }, 'addRewardsToken', apefi.address, oneWeek);
+  await execute('CurveLPStaking', { from: deployer }, 'addRewardsToken', fxs.address, oneWeek);
+  await execute('CurveLPStaking', { from: deployer }, 'notifyRewardAmount', apefi.address, apefiRewardAmount);
+  await execute('CurveLPStaking', { from: deployer }, 'notifyRewardAmount', fxs.address, fxsRewardAmount);
+
+  const apefiRewardAmount2 = parseUnits('5500000', 18);
+  await execute('APEFI', { from: deployer }, 'transfer', uniLPStakingAddress, apefiRewardAmount2);
+  await execute('UniLPStaking', { from: deployer }, 'addRewardsToken', apefi.address, oneWeek);
+  await execute('UniLPStaking', { from: deployer }, 'notifyRewardAmount', apefi.address, apefiRewardAmount2);
+
+
+
+  await deploy('Multicall2', {
+    from: deployer,
+    log: true
+  })
 }
 export default func;
 func.tags = ['SetupTestCase'];
