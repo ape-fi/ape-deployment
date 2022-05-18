@@ -2,7 +2,7 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, ethers, getNamedAccounts } = hre;
+  const { deployments, ethers, getNamedAccounts, getUnnamedAccounts } = hre;
   const { execute, deploy, get, getArtifact, read, save } = deployments;
   const { parseUnits, formatEther } = ethers.utils;
 
@@ -10,6 +10,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   if (network.config.forking || network.name == 'mainnet') {
     return;
   }
+
+  await deploy('Multicall2', {
+    from: (await getUnnamedAccounts())[0],
+    log: true
+  });
 
   const { admin, deployer, user1, user2 } = await getNamedAccounts();
 
@@ -60,6 +65,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: ['Uniswap V2', 'UNI-V2', apeUSDAddress, apefi.address],
     log: true
   });
+
+  await execute('APEFI', { from: deployer }, 'transfer', mockUniLP.address, parseUnits('1890799', 18))
+
+  await execute('APE', { from: deployer }, 'approve', apeTokenHelper, parseUnits('56250', 18));
+  await execute('ApeTokenHelper', { from: deployer }, 'mintBorrow', apeAPEAddress, parseUnits('56250', 18), apeApeUSDAddress, parseUnits('260106', 18));
+  await execute('ApeUSD', { from: deployer }, 'transfer', mockUniLP.address, parseUnits('220699', 18))
 
   const stakingRewardHelper = (await get('StakingRewardsHelper')).address;
 
@@ -118,13 +129,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await execute('APEFI', { from: deployer }, 'transfer', uniLPStakingAddress, apefiRewardAmount2);
   await execute('UniLPStaking', { from: deployer }, 'addRewardsToken', apefi.address, oneWeek);
   await execute('UniLPStaking', { from: deployer }, 'notifyRewardAmount', apefi.address, apefiRewardAmount2);
-
-
-
-  await deploy('Multicall2', {
-    from: deployer,
-    log: true
-  })
 }
 export default func;
 func.tags = ['SetupTestCase'];
