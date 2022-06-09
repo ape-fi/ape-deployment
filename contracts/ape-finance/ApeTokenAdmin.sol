@@ -315,6 +315,17 @@ contract ApeTokenAdmin is Exponential {
         emit SetReserveManager(oldReserveManager, newReserveManager);
     }
 
+    /**
+     * @notice Redeem apeToken
+     * @param apeToken The apeToken address
+     */
+    function redeem(address apeToken) external onlyAdmin {
+        uint256 redeemTokens = ApeTokenInterface(apeToken).balanceOf(address(this));
+        if (redeemTokens > 0) {
+            ApeErc20Interface(apeToken).redeem(address(uint160(address(this))), redeemTokens, 0);
+        }
+    }
+
     /* Internal functions */
 
     function _setAdmin(address payable newAdmin) private {

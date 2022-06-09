@@ -243,28 +243,12 @@ contract ApeCollateralCapErc20 is ApeToken, ApeCollateralCapErc20Interface {
     }
 
     /**
-     * @notice Register account collateral tokens if there is space.
-     * @param account The account to register
-     * @dev This function could only be called by comptroller.
+     * @notice Register user collateral tokens if there is space.
      * @return The actual registered amount of collateral
      */
-    function registerCollateral(address account) external returns (uint256) {
-        require(msg.sender == address(comptroller), "comptroller only");
-
-        uint256 amount = sub_(accountTokens[account], accountCollateralTokens[account]);
-        return increaseUserCollateralInternal(account, amount);
-    }
-
-    /**
-     * @notice Unregister account collateral tokens if the account still has enough collateral.
-     * @dev This function could only be called by comptroller.
-     * @param account The account to unregister
-     */
-    function unregisterCollateral(address account) external {
-        require(msg.sender == address(comptroller), "comptroller only");
-        require(comptroller.redeemAllowed(address(this), account, accountCollateralTokens[account]) == 0, "rejected");
-
-        decreaseUserCollateralInternal(account, accountCollateralTokens[account]);
+    function registerCollateral() external returns (uint256) {
+        uint256 amount = sub_(accountTokens[msg.sender], accountCollateralTokens[msg.sender]);
+        return increaseUserCollateralInternal(msg.sender, amount);
     }
 
     /*** Safe Token ***/
@@ -373,6 +357,27 @@ contract ApeCollateralCapErc20 is ApeToken, ApeCollateralCapErc20Interface {
         }
         require(success, "transfer failed");
         internalCash = sub_(internalCash, amount);
+    }
+
+    /**
+     * @notice Get the amount of collateral tokens user would consume.
+     * @param amountTokens The amount of tokens that user would like to redeem, transfer, or seize
+     * @param account The account address
+     * @return The amount of collateral tokens to be consumed
+     */
+    function getCollateralTokens(uint256 amountTokens, address account) internal view returns (uint256) {
+        /**
+         * For every user, accountTokens must be greater than or equal to accountCollateralTokens.
+         * The buffer between the two values will be transferred first.
+         * bufferTokens = accountTokens[account] - accountCollateralTokens[account]
+         * collateralTokens = tokens - bufferTokens
+         */
+        uint256 bufferTokens = sub_(accountTokens[account], accountCollateralTokens[account]);
+        uint256 collateralTokens = 0;
+        if (amountTokens > bufferTokens) {
+            collateralTokens = amountTokens - bufferTokens;
+        }
+        return collateralTokens;
     }
 
     /**
@@ -520,6 +525,7 @@ contract ApeCollateralCapErc20 is ApeToken, ApeCollateralCapErc20Interface {
         uint256 exchangeRateMantissa;
         uint256 redeemTokens;
         uint256 redeemAmount;
+        uint256 collateralTokens;
     }
 
     /**
@@ -563,20 +569,10 @@ contract ApeCollateralCapErc20 is ApeToken, ApeCollateralCapErc20Interface {
             vars.redeemAmount = redeemAmountIn;
         }
 
-        /**
-         * For every user, accountTokens must be greater than or equal to accountCollateralTokens.
-         * The buffer between the two values will be redeemed first.
-         * bufferTokens = accountTokens[redeemer] - accountCollateralTokens[redeemer]
-         * collateralTokens = redeemTokens - bufferTokens
-         */
-        uint256 bufferTokens = sub_(accountTokens[redeemer], accountCollateralTokens[redeemer]);
-        uint256 collateralTokens = 0;
-        if (vars.redeemTokens > bufferTokens) {
-            collateralTokens = vars.redeemTokens - bufferTokens;
-        }
+        vars.collateralTokens = getCollateralTokens(vars.redeemTokens, redeemer);
 
         /* redeemAllowed might check more than user's liquidity. */
-        require(comptroller.redeemAllowed(address(this), redeemer, collateralTokens) == 0, "rejected");
+        require(comptroller.redeemAllowed(address(this), redeemer, vars.collateralTokens) == 0, "rejected");
 
         /* Verify market's block number equals current block number */
         require(accrualBlockNumber == getBlockNumber(), "market is stale");
@@ -599,7 +595,7 @@ contract ApeCollateralCapErc20 is ApeToken, ApeCollateralCapErc20Interface {
         /*
          * We only deallocate collateral tokens if the redeemer needs to redeem them.
          */
-        decreaseUserCollateralInternal(redeemer, collateralTokens);
+        decreaseUserCollateralInternal(redeemer, vars.collateralTokens);
 
         /*
          * We invoke doTransferOut for the redeemer and the redeemAmount.
@@ -636,19 +632,13 @@ contract ApeCollateralCapErc20 is ApeToken, ApeCollateralCapErc20Interface {
         uint256 seizeTokens,
         uint256 feeTokens
     ) internal returns (uint256) {
+        uint256 collateralTokens = getCollateralTokens(seizeTokens, borrower);
+
         /* Fail if seize not allowed */
         require(
-            comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, seizeTokens) == 0,
+            comptroller.seizeAllowed(address(this), seizerToken, liquidator, borrower, collateralTokens) == 0,
             "rejected"
         );
-
-        /*
-         * Return if seizeTokens is zero.
-         * Put behind `seizeAllowed` for accuring potential COMP rewards.
-         */
-        if (seizeTokens == 0) {
-            return uint256(Error.NO_ERROR);
-        }
 
         /* Fail if borrower = liquidator */
         require(borrower != liquidator, "invalid account pair");
@@ -661,20 +651,28 @@ contract ApeCollateralCapErc20 is ApeToken, ApeCollateralCapErc20Interface {
          *  accountTokens[borrower] = accountTokens[borrower] - seizeTokens
          *  accountTokens[liquidator] = accountTokens[liquidator] + bonusTokens
          *  accountTokens[admin] = accountTokens[admin] + feeTokens
-         *  accountCollateralTokens[borrower] = accountCollateralTokens[borrower] - seizeTokens
-         *  accountCollateralTokens[liquidator] = accountCollateralTokens[liquidator] + bonusTokens
-         *  accountCollateralTokens[admin] = accountCollateralTokens[admin] + feeTokens
+         *  accountCollateralTokens[borrower] = accountCollateralTokens[borrower] - collateralTokens
+         *  accountCollateralTokens[liquidator] = accountCollateralTokens[liquidator] + min(collateralTokens, bonusTokens)
+         *  accountCollateralTokens[admin] = accountCollateralTokens[admin] + max(collateralTokens - bonusTokens, 0)
          */
         accountTokens[borrower] = sub_(accountTokens[borrower], seizeTokens);
         accountTokens[liquidator] = add_(accountTokens[liquidator], bonusTokens);
         accountTokens[admin] = add_(accountTokens[admin], feeTokens);
-        accountCollateralTokens[borrower] = sub_(accountCollateralTokens[borrower], seizeTokens);
-        accountCollateralTokens[liquidator] = add_(accountCollateralTokens[liquidator], bonusTokens);
-        accountCollateralTokens[admin] = add_(accountCollateralTokens[admin], feeTokens);
+        if (collateralTokens > 0) {
+            accountCollateralTokens[borrower] = sub_(accountCollateralTokens[borrower], collateralTokens);
+            if (collateralTokens <= bonusTokens) {
+                // All collateral tokens go to liquidator.
+                accountCollateralTokens[liquidator] = add_(accountCollateralTokens[liquidator], collateralTokens);
+            } else {
+                accountCollateralTokens[liquidator] = add_(accountCollateralTokens[liquidator], bonusTokens);
+                accountCollateralTokens[admin] = add_(accountCollateralTokens[admin], collateralTokens - bonusTokens);
+                emit UserCollateralChanged(admin, accountCollateralTokens[admin]);
+            }
 
-        /* Emit UserCollateralChanged events */
-        emit UserCollateralChanged(borrower, accountCollateralTokens[borrower]);
-        emit UserCollateralChanged(liquidator, accountCollateralTokens[liquidator]);
+            /* Emit UserCollateralChanged events */
+            emit UserCollateralChanged(borrower, accountCollateralTokens[borrower]);
+            emit UserCollateralChanged(liquidator, accountCollateralTokens[liquidator]);
+        }
 
         /* We call the defense hook */
         comptroller.seizeVerify(address(this), seizerToken, liquidator, borrower, seizeTokens);

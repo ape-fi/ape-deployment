@@ -443,9 +443,7 @@ contract ApeCollateralCapErc20Interface is CCapableErc20Interface, CCollateralCa
 
     /*** User Interface ***/
 
-    function registerCollateral(address account) external returns (uint256);
-
-    function unregisterCollateral(address account) external;
+    function registerCollateral() external returns (uint256);
 
     function flashLoan(
         ERC3156FlashBorrowerInterface receiver,

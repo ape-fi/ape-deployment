@@ -117,11 +117,6 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
 
         require(marketToJoin.isListed, "market not listed");
 
-        if (apeToken.version() == ApeTokenStorage.Version.COLLATERALCAP) {
-            // register collateral for the account if the token is CollateralCap version.
-            ApeCollateralCapErc20Interface(address(apeToken)).registerCollateral(account);
-        }
-
         if (marketToJoin.accountMembership[account] == true) {
             // already joined
             return;
@@ -146,21 +141,15 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
      */
     function exitMarket(address apeTokenAddress) external {
         ApeToken apeToken = ApeToken(apeTokenAddress);
-        /* Get sender tokensHeld and amountOwed underlying from the apeToken */
-        (uint256 oErr, uint256 tokensHeld, uint256 amountOwed, ) = apeToken.getAccountSnapshot(msg.sender);
+        /* Get sender amountOwed underlying from the apeToken */
+        (uint256 oErr, , uint256 amountOwed, ) = apeToken.getAccountSnapshot(msg.sender);
         require(oErr == 0, "exitMarket: getAccountSnapshot failed"); // semi-opaque error code
 
-        /* Fail if the sender has a borrow balance */
+        /* Fail if the sender has a borrow or supply balance */
         require(amountOwed == 0, "nonzero borrow balance");
-
-        /* Fail if the sender is not permitted to redeem all of their tokens */
-        require(redeemAllowedInternal(apeTokenAddress, msg.sender, tokensHeld) == 0, "failed to exit market");
+        require(apeToken.balanceOf(msg.sender) == 0, "nonzero supply balance");
 
         Market storage marketToExit = markets[apeTokenAddress];
-
-        if (apeToken.version() == ApeTokenStorage.Version.COLLATERALCAP) {
-            ApeCollateralCapErc20Interface(apeTokenAddress).unregisterCollateral(msg.sender);
-        }
 
         /* Return true if the sender is not already ‘in’ the market */
         if (!marketToExit.accountMembership[msg.sender]) {

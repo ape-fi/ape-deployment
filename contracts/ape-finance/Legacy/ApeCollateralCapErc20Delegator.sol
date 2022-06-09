@@ -187,23 +187,10 @@ contract ApeCollateralCapErc20Delegator is ApeTokenInterface, ApeCollateralCapEr
     }
 
     /**
-     * @notice Register account collateral tokens if there is space.
-     * @param account The account to register
-     * @dev This function could only be called by comptroller.
+     * @notice Register user collateral tokens if there is space.
      * @return The actual registered amount of collateral
      */
-    function registerCollateral(address account) external returns (uint256) {
-        account; // Shh
-        delegateAndReturn();
-    }
-
-    /**
-     * @notice Unregister account collateral tokens if the account still has enough collateral.
-     * @dev This function could only be called by comptroller.
-     * @param account The account to unregister
-     */
-    function unregisterCollateral(address account) external {
-        account; // Shh
+    function registerCollateral() external returns (uint256) {
         delegateAndReturn();
     }
 
