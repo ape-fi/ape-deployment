@@ -132,4 +132,6 @@ interface ComptrollerInterfaceExtension {
         );
 
     function supplyCaps(address market) external view returns (uint256);
+
+    function isCreditAccount(address account, address apeToken) external view returns (bool);
 }

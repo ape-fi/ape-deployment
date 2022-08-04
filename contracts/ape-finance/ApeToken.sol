@@ -356,6 +356,7 @@ contract ApeToken is ApeTokenInterface, Exponential, TokenErrorReporter {
         uint256 accountBorrows;
         uint256 accountBorrowsNew;
         uint256 totalBorrowsNew;
+        bool isBorrowerCreditAccount;
     }
 
     /**
@@ -385,6 +386,10 @@ contract ApeToken is ApeTokenInterface, Exponential, TokenErrorReporter {
          *  accountBorrowsNew = accountBorrows + borrowAmount
          *  totalBorrowsNew = totalBorrows + borrowAmount
          */
+        vars.isBorrowerCreditAccount = ComptrollerInterfaceExtension(address(comptroller)).isCreditAccount(
+            borrower,
+            address(this)
+        );
         vars.accountBorrows = borrowBalanceStoredInternal(borrower);
         vars.accountBorrowsNew = add_(vars.accountBorrows, borrowAmount);
         vars.totalBorrowsNew = add_(totalBorrows, borrowAmount);
@@ -404,7 +409,7 @@ contract ApeToken is ApeTokenInterface, Exponential, TokenErrorReporter {
          *  On success, the apeToken borrowAmount less of cash.
          *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
          */
-        if (borrowFee > 0) {
+        if (!vars.isBorrowerCreditAccount && borrowFee > 0) {
             uint256 borrowAmountAfterFee = mul_(
                 borrowAmount,
                 sub_(Exp({mantissa: mantissaOne}), Exp({mantissa: borrowFee}))
@@ -947,7 +952,7 @@ contract ApeToken is ApeTokenInterface, Exponential, TokenErrorReporter {
      */
     function _setBorrowFee(uint256 newBorrowFee) public {
         require(msg.sender == admin, "admin only");
-        require(newBorrowFee < 0.1e18, "invalid borrow fee"); // 10% borrow fee max
+        require(newBorrowFee <= 0.1e18, "invalid borrow fee"); // 10% borrow fee max
 
         uint256 oldBorrowFee = borrowFee;
         borrowFee = newBorrowFee;
