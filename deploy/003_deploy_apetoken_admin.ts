@@ -5,11 +5,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
   const {deploy} = deployments;
 
-  const {deployer} = await getNamedAccounts();
+  const {deployer, admin} = await getNamedAccounts();
 
   await deploy('ApeTokenAdmin', {
     from: deployer,
-    args: [deployer],
+    args: [admin],
     log: true,
   });
 };
