@@ -12,6 +12,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true
   });
 
+  await deploy('ApeErc20NoInterestDelegate', {
+    from: deployer,
+    log: true
+  });
+
   await deploy('ApeErc20Delegate', {
     from: deployer,
     log: true

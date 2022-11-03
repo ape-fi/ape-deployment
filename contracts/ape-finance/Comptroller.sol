@@ -65,6 +65,9 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
     /// @notice Emitted when credit limit manager is changed
     event NewCreditLimitManager(address oldCreditLimitManager, address newCreditLimitManager);
 
+    /// @notice Emiited when only supplier is set
+    event OnlySupplierSet(address market, address supplier);
+
     // No collateralFactorMantissa may exceed this value
     uint256 internal constant collateralFactorMaxMantissa = 0.9e18; // 0.9
 
@@ -210,7 +213,10 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
         uint256 mintAmount
     ) external returns (uint256) {
         // Pausing is a very serious situation - we revert to sound the alarms
-        require(!mintGuardianPaused[apeToken], "mint is paused");
+        if (onlySupplier[apeToken] != minter) {
+            // Only supplier could bypass mint pause
+            require(!mintGuardianPaused[apeToken], "mint is paused");
+        }
         require(!isCreditAccount(minter, apeToken), "credit account cannot mint");
 
         require(isMarketListed(apeToken), "market not listed");
@@ -1186,6 +1192,20 @@ contract Comptroller is ComptrollerV1Storage, ComptrollerInterface, ComptrollerE
 
         creditLimits[protocol][market] = creditLimit;
         emit CreditLimitChanged(protocol, market, creditLimit);
+    }
+
+    /**
+     * @notice Sets market's only supplier
+     * @dev If the only supplier of a market is set, the only supplier could bypass the `mintAllowed` check.
+     * @param market The market
+     * @param supplier The supplier
+     */
+    function _setOnlySupplier(address market, address supplier) public {
+        require(msg.sender == admin, "only admin could set only supplier");
+        require(isMarketListed(market), "market not listed");
+
+        onlySupplier[market] = supplier;
+        emit OnlySupplierSet(market, supplier);
     }
 
     /**

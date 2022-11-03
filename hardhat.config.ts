@@ -18,7 +18,7 @@ const config: any = {
         }
       },
       {
-        version: '0.8.11',
+        version: '0.8.10',
         settings: {
           optimizer: {
             enabled: true
@@ -50,6 +50,9 @@ const config: any = {
     },
     apefi: {
       default: '0x9fFEC4aCb9A6528C7fb83ccCa2B9e73e80d1a2d1'
+    },
+    bridge: {
+      default: '0x833FE7f92B1f21e17B9Cc4e52a55AF0eda4760E8'
     }
   },
   networks: {

@@ -106,4 +106,7 @@ contract ComptrollerV1Storage is UnitrollerAdminStorage {
 
     /// @notice creditLimitManager is the role who is in charge of increasing the credit limit.
     address public creditLimitManager;
+
+    /// @notice onlySupplier is only supplier who can supply to certain market.
+    mapping(address => address) public onlySupplier;
 }
