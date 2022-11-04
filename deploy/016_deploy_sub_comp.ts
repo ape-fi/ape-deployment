@@ -51,6 +51,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await execute(`${symbol}Comptroller`, { from: deployer, log: true }, '_setPriceOracle', priceOracleAddress);
   await execute(`${symbol}Comptroller`, { from: deployer, log: true }, '_setPauseGuardian', guardian);
 
+  // deploy ApeTokenHelper
+  await deploy(`${symbol}ApeTokenHelper`, {
+    from: deployer,
+    args: [unitrollerAddress],
+    log: true,
+  });
 
   // deploy apeUSD market
   const irmAddress = (await get('StableIRM')).address;
