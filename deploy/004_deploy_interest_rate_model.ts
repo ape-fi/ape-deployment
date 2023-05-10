@@ -24,8 +24,45 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       jump,
       kink1,
       kink2,
-      roof,
-      admin
+      roof
+    ],
+    log: true
+  });
+
+
+  multiplier = parseEther('0.15');
+  jump = parseEther('2');
+
+  await deploy('MajorIRM', {
+    from: deployer,
+    contract: 'TripleSlopeRateModel',
+    args: [
+      baseRate,
+      multiplier.mul(kink1).div(parseEther('1')),
+      jump,
+      kink1,
+      kink2,
+      roof
+    ],
+    log: true
+  });
+
+
+  multiplier = parseEther('0.2');
+  jump = parseEther('5');
+  kink1 = parseEther('0.7');
+  kink2 = parseEther('0.8');
+
+  await deploy('MemeIRM', {
+    from: deployer,
+    contract: 'TripleSlopeRateModel',
+    args: [
+      baseRate,
+      multiplier.mul(kink1).div(parseEther('1')),
+      jump,
+      kink1,
+      kink2,
+      roof
     ],
     log: true
   });

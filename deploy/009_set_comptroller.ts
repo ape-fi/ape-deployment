@@ -10,19 +10,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const unitrollerAddress = (await get('Unitroller')).address;
   const comptrollerImplAddress = (await get('Comptroller_Implementation')).address;
-  await execute('Unitroller', { from: deployer }, '_setPendingImplementation', comptrollerImplAddress);
-  await execute('Comptroller_Implementation', { from: deployer }, '_become', unitrollerAddress);
+  await execute('Unitroller', { from: deployer, log: true }, '_setPendingImplementation', comptrollerImplAddress);
+  await execute('Comptroller_Implementation', { from: deployer, log: true }, '_become', unitrollerAddress);
 
   const closeFactor = parseEther('0.5');
   const liquidationIncentive = parseEther('1.1');
 
-  const priceOracleAddress = (await deployments.get('PriceOracleProxyUSD')).address;
+  const priceOracleAddress = (await deployments.get('PriceOracleProxyIB')).address;
 
-  await execute('Comptroller', { from: deployer }, '_setCloseFactor', closeFactor);
-  await execute('Comptroller', { from: deployer }, '_setLiquidationIncentive', liquidationIncentive);
-  await execute('Comptroller', { from: deployer }, '_setPriceOracle', priceOracleAddress);
-  await execute('Comptroller', { from: deployer }, '_setPauseGuardian', guardian);
+  await execute('Comptroller', { from: deployer, log: true }, '_setCloseFactor', closeFactor);
+  await execute('Comptroller', { from: deployer, log: true }, '_setLiquidationIncentive', liquidationIncentive);
+  await execute('Comptroller', { from: deployer, log: true }, '_setPriceOracle', priceOracleAddress);
+  await execute('Comptroller', { from: deployer, log: true }, '_setGuardian', guardian);
 };
 export default func;
 func.tags = ['SetupComptroller'];
-func.dependencies = ['Comptroller', 'PriceOracleProxyUSD'];
+func.dependencies = ['Comptroller', 'PriceOracleProxyIB'];

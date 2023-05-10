@@ -4,31 +4,30 @@ import {DeployFunction} from 'hardhat-deploy/types';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployments, ethers, getNamedAccounts} = hre;
   const {deploy, get, execute} = deployments;
-  const { parseUnits, } = ethers.utils;
 
-  const {deployer, admin, guardian} = await getNamedAccounts();
-
-  const apeUSDAddress = (await get('ApeUSD')).address;
+  const {deployer, guardian} = await getNamedAccounts();
 
   const network = hre.network as any;
   if (network.config.forking || network.name == 'mainnet') {
-    const { feedRegistry, stdReference } = await getNamedAccounts();
-    await deploy('PriceOracleProxyUSD', {
+    const { feedRegistry } = await getNamedAccounts();
+    const priceOracleV1Address = (await get('PriceOracleV1')).address
+
+    await deploy('PriceOracleProxyIB', {
       from: deployer,
-      args: [deployer, feedRegistry, stdReference, apeUSDAddress],
+      args: [deployer, priceOracleV1Address, feedRegistry],
       log: true,
     });
 
-    await execute('PriceOracleProxyUSD', {from: deployer}, '_setGuardian', guardian);
+    await execute('PriceOracleProxyIB', { from: deployer, log: true }, '_setGuardian', guardian);
   } else {
-    await deploy('PriceOracleProxyUSD', {
+
+    await deploy('PriceOracleProxyIB', {
       from: deployer,
       contract: 'SimplePriceOracle',
       log: true
     });
-
-    await execute('PriceOracleProxyUSD', { from: deployer }, 'setDirectPrice', apeUSDAddress, parseUnits('1', 18));
   }
 };
-func.tags = ['PriceOracleProxyUSD'];
 export default func;
+func.tags = ['PriceOracleProxyIB'];
+func.dependencies = ['PriceOracleV1'];
